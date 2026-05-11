@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naija Bite | ChatBot</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="chat-container">
+        <header id="chat-header">
+            <h1>Naija Bite Bot</h1>
+            <span id="status-indicator"></span>
+        </header>
+        <div id="chat-window">
+            <!-- Messages appear here -->
+        </div>
+        <form id="chat-form">
+            <input type="text" id="user-input" placeholder="Type a number..." autocomplete="off">
+            <button type="submit" id="send-btn">Send</button>
+        </form>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
