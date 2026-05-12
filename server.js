@@ -24,9 +24,9 @@ io.on("connection", (socket) => {
     );
   });
 
-  socket.on("chat-message", async ({ deviceId, message }) => {
-    const response = await handleBotMessage(deviceId, message);
-    io.to(deviceId).emit("bot-response", { text: response }); // Match app.js key and object structure
+  socket.on("user-selection", async ({ sessionId, selection }) => {
+    const response = await handleBotMessage(sessionId, selection);
+    socket.emit("bot-response", { text: response });
   });
 });
 

@@ -24,14 +24,18 @@ export const handleBotMessage = async (deviceId, message) => {
       await session.save();
       let menuList = "Select an item by number:\n";
       items.forEach((item, index) => {
-        menuList += `${index + 10}. ${item.name} - #${item.price}\n`;
+        // Store index mapping in session to allow selection by number
+        menuList += `${index + 1}. ${item.name} - #${item.price}\n`;
       });
       return menuList;
 
     case "97":
-      const current = session.currentOrder.items;
-      if (current.length === 0) return "Your current order is empty.";
-      return `Current Order: ${current.map((i) => i.name).join(", ")} \nTotal: #${session.currentOrder.total}`;
+      if (session.currentOrder.items.length === 0)
+        return "Your current order is empty.";
+      const currentItems = session.currentOrder.items
+        .map((i) => `${i.name} (#${i.price})`)
+        .join("\n");
+      return `Current Order:\n${currentItems}\nTotal: #${session.currentOrder.total}`;
 
     case "99":
       if (session.currentOrder.items.length === 0) {
@@ -49,9 +53,13 @@ export const handleBotMessage = async (deviceId, message) => {
 
     case "PAY":
       if (session.state === "awaiting_payment") {
-        return `To complete your payment, please click here: /api/pay/${deviceId}`;
+        // In a real app, you'd fetch the last order ID for this session
+        const lastOrder = await Order.findOne({ sessionId: deviceId }).sort({
+          createdAt: -1,
+        });
+        return `Click to pay: /api/pay?orderId=${lastOrder._id}&email=customer@example.com`;
       }
-      return getMainMenu();
+      return "No pending payment found. " + getMainMenu();
 
     case "98":
       const history = await Order.find({ sessionId: deviceId });
