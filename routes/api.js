@@ -1,6 +1,9 @@
 import express from "express";
 import Menu from "../models/Menu.js";
-import { initializePayment } from "../controllers/paymentController.js";
+import {
+  initializePayment,
+  verifyPayment,
+} from "../controllers/paymentController.js";
 
 const router = express.Router();
 
@@ -19,13 +22,7 @@ router.delete("/menu/:id", async (req, res) => {
   res.json({ success: true });
 });
 
-router.post("/pay", initializePayment);
-
-router.get("/payment-success", (req, res) => {
-  // Logic to verify via Paystack reference
-  res.send(
-    "<h1>Payment Successful!</h1><p>You can return to the chat now.</p>",
-  );
-});
+router.get("/pay-trigger", initializePayment);
+router.get("/payment-success", verifyPayment);
 
 export default router;

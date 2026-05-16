@@ -1,5 +1,21 @@
+const menuForm = document.getElementById("menu-form");
+const menuList = document.getElementById("menu-list");
+
+const fetchAndRenderMenu = async () => {
+  const res = await fetch("/api/menu");
+  const items = await res.json();
+  renderTable(items);
+};
+
 const renderTable = (items) => {
   menuList.textContent = "";
+  if (items.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "No items available in the menu.";
+    menuList.appendChild(p);
+    return;
+  }
+
   const table = document.createElement("table");
   const thead = document.createElement("thead");
   const headerRow = document.createElement("tr");
@@ -32,6 +48,14 @@ const renderTable = (items) => {
     btn.dataset.id = item._id;
     btn.textContent = "Delete";
 
+    btn.addEventListener("click", async (e) => {
+      const id = e.target.dataset.id;
+      const deleteRes = await fetch(`/api/menu/${id}`, { method: "DELETE" });
+      if (deleteRes.ok) {
+        fetchAndRenderMenu();
+      }
+    });
+
     actionTd.appendChild(btn);
     [nameTd, priceTd, catTd, actionTd].forEach((td) => tr.appendChild(td));
     tbody.appendChild(tr);
@@ -39,3 +63,23 @@ const renderTable = (items) => {
   table.appendChild(tbody);
   menuList.appendChild(table);
 };
+
+menuForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("item-name").value;
+  const price = document.getElementById("item-price").value;
+  const category = document.getElementById("item-category").value;
+
+  const res = await fetch("/api/menu", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, price: Number(price), category }),
+  });
+
+  if (res.ok) {
+    menuForm.reset();
+    fetchAndRenderMenu();
+  }
+});
+
+document.addEventListener("DOMContentLoaded", fetchAndRenderMenu);

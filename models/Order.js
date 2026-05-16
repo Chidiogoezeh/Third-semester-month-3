@@ -16,6 +16,7 @@ const OrderSchema = new mongoose.Schema({
     default: "pending",
   },
   paymentStatus: { type: String, default: "unpaid" },
+  scheduledFor: { type: String, default: "ASAP" },
   createdAt: { type: Date, default: Date.now },
 });
 
