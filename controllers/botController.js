@@ -17,13 +17,10 @@ export const handleBotMessage = async (deviceId, message) => {
 
   const input = message.trim();
 
-  // If the user is currently ordering items
-  if (
-    session.state === "ordering" &&
-    input !== "99" &&
-    input !== "97" &&
-    input !== "0"
-  ) {
+  // Guard Rails: Global commands intercept lower ordering state flags
+  const globalCommands = ["1", "97", "98", "99", "0"];
+
+  if (session.state === "ordering" && !globalCommands.includes(input)) {
     const num = parseInt(input);
     const items = await Menu.find();
 
@@ -35,13 +32,12 @@ export const handleBotMessage = async (deviceId, message) => {
       });
       session.currentOrder.total += selected.price;
       await session.save();
-      return `${selected.name} added to your order. Total: #${session.currentOrder.total}.\nSelect another number to add more, or 99 to checkout.`;
+      return `${selected.name} added to your order. Total: #${session.currentOrder.total}.\nSelect another number to add more, 97 to check basket, or 99 to checkout.`;
     }
     return "Invalid selection. Please choose a valid item number from the menu list, or 0 to cancel.";
   }
 
-  // If the user is scheduling their order
-  if (session.state === "scheduling") {
+  if (session.state === "scheduling" && !globalCommands.includes(input)) {
     const lastOrder = await Order.findOne({ sessionId: deviceId }).sort({
       createdAt: -1,
     });
@@ -72,12 +68,12 @@ export const handleBotMessage = async (deviceId, message) => {
 
     case "97":
       if (!session.currentOrder || session.currentOrder.items.length === 0) {
-        return "Your current basket is empty.";
+        return "Your current basket is empty. Select 1 to start a new order.";
       }
       const currentItems = session.currentOrder.items
         .map((i) => `${i.name} (#${i.price})`)
         .join("\n");
-      return `Current Order Basket:\n${currentItems}\n\nTotal: #${session.currentOrder.total}`;
+      return `Current Order Basket:\n${currentItems}\n\nTotal: #${session.currentOrder.total}\n\nSelect 99 to checkout or 1 to add more items.`;
 
     case "99":
       if (!session.currentOrder || session.currentOrder.items.length === 0) {
@@ -101,22 +97,26 @@ export const handleBotMessage = async (deviceId, message) => {
           createdAt: -1,
         });
         if (!lastOrder) return "No order found to pay for.";
-        return `Click the link below to securely pay via Paystack:\n${process.env.APP_URL || "http://localhost:3000"}/api/pay-trigger?orderId=${lastOrder._id}`;
+        return `PAY_LINK|${process.env.APP_URL || "http://localhost:3000"}/api/pay-trigger?orderId=${lastOrder._id}`;
       }
       return "No pending payment found. " + getMainMenu();
 
     case "98":
       const history = await Order.find({ sessionId: deviceId });
-      if (history.length === 0)
-        return "No previous order history found for this device.";
+      if (history.length === 0) {
+        return (
+          "No previous order history found for this device.\n\n" + getMainMenu()
+        );
+      }
       return (
         "Order History:\n" +
         history
           .map(
             (o) =>
-              `ID: ${o._id.toString().slice(-5)} - #${o.totalAmount} | Payment: ${o.paymentStatus} | Scheduled: ${o.scheduledFor || "N/A"}`,
+              `ID: ${o._id.toString().slice(-5)} - #${o.totalAmount} | Payment: ${o.paymentStatus} | Scheduled: ${o.scheduledFor}`,
           )
-          .join("\n")
+          .join("\n") +
+        "\n\nSelect 1 to place a new order."
       );
 
     case "0":

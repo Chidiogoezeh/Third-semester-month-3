@@ -3,7 +3,7 @@ import { PAYSTACK_CONFIG } from "../config/paystack.js";
 import Order from "../models/Order.js";
 
 export const initializePayment = async (req, res) => {
-  const { orderId } = req.query; // Triggered via Web Interface Redirect Link
+  const { orderId } = req.query;
   const email = "customer@example.com";
 
   try {
@@ -41,14 +41,15 @@ export const verifyPayment = async (req, res) => {
         paymentStatus: "paid",
         status: "completed",
       });
+
       res.send(`
-        <div style="text-align:center; padding-top:50px; font-family:sans-serif;">
-          <h1 style="color:#27ae60;">Payment Successful!</h1>
+        <div class="success-payment-wrapper">
+          <h1>Payment Successful!</h1>
           <p>Your order status has been validated. You can return to the chatbot interface now.</p>
         </div>
       `);
     } else {
-      res.send(`<h1>Transaction Verification Failed</h1>`);
+      res.send(`<div><h1>Transaction Verification Failed</h1></div>`);
     }
   } catch (error) {
     res.status(500).send("Error verifying transaction framework.");

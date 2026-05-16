@@ -1,5 +1,6 @@
 const menuForm = document.getElementById("menu-form");
 const menuList = document.getElementById("menu-list");
+let editModeId = null;
 
 const fetchAndRenderMenu = async () => {
   const res = await fetch("/api/menu");
@@ -20,7 +21,7 @@ const renderTable = (items) => {
   const thead = document.createElement("thead");
   const headerRow = document.createElement("tr");
 
-  ["Name", "Price", "Category", "Action"].forEach((text) => {
+  ["Name", "Price", "Category", "Actions"].forEach((text) => {
     const th = document.createElement("th");
     th.textContent = text;
     headerRow.appendChild(th);
@@ -43,20 +44,31 @@ const renderTable = (items) => {
     catTd.textContent = item.category;
 
     const actionTd = document.createElement("td");
-    const btn = document.createElement("button");
-    btn.className = "delete-btn";
-    btn.dataset.id = item._id;
-    btn.textContent = "Delete";
 
-    btn.addEventListener("click", async (e) => {
-      const id = e.target.dataset.id;
-      const deleteRes = await fetch(`/api/menu/${id}`, { method: "DELETE" });
-      if (deleteRes.ok) {
-        fetchAndRenderMenu();
-      }
+    const editBtn = document.createElement("button");
+    editBtn.className = "edit-btn";
+    editBtn.textContent = "Replace/Edit";
+    editBtn.addEventListener("click", () => {
+      document.getElementById("item-name").value = item.name;
+      document.getElementById("item-price").value = item.price;
+      document.getElementById("item-category").value = item.category;
+      editModeId = item._id;
+      document.querySelector("#menu-form button").textContent = "Update Item";
     });
 
-    actionTd.appendChild(btn);
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "delete-btn";
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", async () => {
+      const deleteRes = await fetch(`/api/menu/${item._id}`, {
+        method: "DELETE",
+      });
+      if (deleteRes.ok) fetchAndRenderMenu();
+    });
+
+    actionTd.appendChild(editBtn);
+    actionTd.appendChild(deleteBtn);
+
     [nameTd, priceTd, catTd, actionTd].forEach((td) => tr.appendChild(td));
     tbody.appendChild(tr);
   });
@@ -70,11 +82,22 @@ menuForm.addEventListener("submit", async (e) => {
   const price = document.getElementById("item-price").value;
   const category = document.getElementById("item-category").value;
 
-  const res = await fetch("/api/menu", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, price: Number(price), category }),
-  });
+  let res;
+  if (editModeId) {
+    res = await fetch(`/api/menu/${editModeId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, price: Number(price), category }),
+    });
+    editModeId = null;
+    document.querySelector("#menu-form button").textContent = "Add Item";
+  } else {
+    res = await fetch("/api/menu", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, price: Number(price), category }),
+    });
+  }
 
   if (res.ok) {
     menuForm.reset();

@@ -4,7 +4,6 @@ const chatWindow = document.getElementById("chat-window");
 const chatForm = document.getElementById("chat-form");
 const userInput = document.getElementById("user-input");
 
-// Persistence using localStorage for device session
 let sessionId =
   localStorage.getItem("bot_session") ||
   "sess_" + Math.random().toString(36).substr(2, 9);
@@ -12,10 +11,21 @@ localStorage.setItem("bot_session", sessionId);
 
 const createMessageElement = (text, sender) => {
   const msgDiv = document.createElement("div");
-  msgDiv.classList.add("message", sender);
-  const content = document.createElement("p");
-  content.textContent = text;
-  msgDiv.appendChild(content);
+  msgDiv.classList.add("message", sender === "user" ? "user-msg" : "bot-msg");
+
+  if (text.startsWith("PAY_LINK|")) {
+    const url = text.split("|")[1];
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.textContent = "Click here to securely pay via Paystack";
+    link.className = "payment-action-button"; // Styled via CSS stylesheet
+    msgDiv.appendChild(link);
+  } else {
+    const content = document.createElement("p");
+    content.textContent = text;
+    msgDiv.appendChild(content);
+  }
   return msgDiv;
 };
 
@@ -25,12 +35,10 @@ const appendMessage = (text, sender) => {
   chatWindow.scrollTop = chatWindow.scrollHeight;
 };
 
-// Handle Incoming Bot Messages
 onMessage("bot-response", (data) => {
   appendMessage(data.text, "bot");
 });
 
-// Initial Welcome Message
 window.addEventListener("DOMContentLoaded", () => {
   sendMessage("join-chat", { sessionId });
 });

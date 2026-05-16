@@ -84,6 +84,38 @@ button {
     border-radius: 4px;
     cursor: pointer;
 }
+
+.payment-action-button {
+    display: inline-block;
+    background: #27ae60;
+    color: white;
+    padding: 10px 15px;
+    text-decoration: none;
+    border-radius: 6px;
+    margin-top: 5px;
+    font-weight: bold;
+}
+
+.success-payment-wrapper {
+    text-align: center; 
+    padding-top: 50px; 
+    font-family: sans-serif;
+}
+
+.success-payment-wrapper h1 {
+    color: #27ae60;
+}
+
+.edit-btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    margin-right: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
 @media (
     max-width: 600px) { #chat-container { 
     height: 100vh; 

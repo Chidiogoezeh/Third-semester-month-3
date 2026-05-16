@@ -17,6 +17,13 @@ router.post("/menu", async (req, res) => {
   res.json(newItem);
 });
 
+router.put("/menu/:id", async (req, res) => {
+  const updatedItem = await Menu.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+  });
+  res.json(updatedItem);
+});
+
 router.delete("/menu/:id", async (req, res) => {
   await Menu.findByIdAndDelete(req.params.id);
   res.json({ success: true });
