@@ -21,7 +21,6 @@ export const handleBotMessage = async (deviceId, message) => {
     });
   }
 
-  // Ensure currentOrder subdocument initialization framework
   if (!session.currentOrder) {
     session.currentOrder = { items: [], total: 0 };
   }
@@ -29,7 +28,6 @@ export const handleBotMessage = async (deviceId, message) => {
   const input = message.trim();
   const globalCommands = ["1", "97", "98", "99", "0"];
 
-  // Global command interceptor to break loops/states cleanly
   if (globalCommands.includes(input)) {
     session.state = "idle";
   }
@@ -123,7 +121,7 @@ export const handleBotMessage = async (deviceId, message) => {
 
     case "99":
       if (!session.currentOrder || session.currentOrder.items.length === 0) {
-        return "No order to place. Select 1 to start a new order.";
+        return "No order to place.\n\nSelect 1 to place a new order.";
       }
       const newOrder = await Order.create({
         sessionId: deviceId,
@@ -156,7 +154,6 @@ export const handleBotMessage = async (deviceId, message) => {
       );
 
     case "0":
-      // If there is an active checkout order awaiting payment, cancel it too
       await Order.updateMany(
         { sessionId: deviceId, status: "pending" },
         { status: "cancelled" },
