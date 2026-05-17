@@ -26,15 +26,12 @@ export const handleBotMessage = async (deviceId, message) => {
   }
 
   const input = message.trim();
-  const globalCommands = ["1", "97", "98", "99", "0"];
 
-  if (globalCommands.includes(input)) {
-    if (input === "1") session.state = "ordering";
-    if (input === "0") session.state = "idle";
-  }
-
-  // State: Ordering loop
-  if (session.state === "ordering" && !globalCommands.includes(input)) {
+  // State: Ordering loop - Priority over global commands unless it's a structural command
+  if (
+    session.state === "ordering" &&
+    !["0", "97", "99", "98"].includes(input)
+  ) {
     const num = parseInt(input);
     const items = await Menu.find().sort({ category: 1, name: 1 });
 
@@ -48,11 +45,14 @@ export const handleBotMessage = async (deviceId, message) => {
       await session.save();
       return `${selected.name} added to your order. Total: #${session.currentOrder.total}.\nSelect another item number to add more, 97 to check basket, or 99 to checkout.`;
     }
-    return "Invalid selection. Please choose a valid item number from the list, or 0 to cancel.";
+    return "Invalid selection. Please choose a valid item number from the list, 97 to view basket, or 0 to cancel.";
   }
 
   // State: Scheduling preference handling
-  if (session.state === "scheduling" && !globalCommands.includes(input)) {
+  if (
+    session.state === "scheduling" &&
+    !["0", "1", "97", "98", "99"].includes(input)
+  ) {
     const lastOrder = await Order.findOne({ sessionId: deviceId }).sort({
       createdAt: -1,
     });
@@ -68,7 +68,10 @@ export const handleBotMessage = async (deviceId, message) => {
   }
 
   // State: Awaiting payment input check
-  if (session.state === "awaiting_payment" && !globalCommands.includes(input)) {
+  if (
+    session.state === "awaiting_payment" &&
+    !["0", "1", "97", "98", "99"].includes(input)
+  ) {
     if (input.toUpperCase() === "PAY") {
       const lastOrder = await Order.findOne({
         sessionId: deviceId,
