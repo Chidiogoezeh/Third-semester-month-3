@@ -3,7 +3,7 @@ import Session from "../models/Session.js";
 import Order from "../models/Order.js";
 
 const getMainMenu = () => {
-  return `Welcome to our Restaurant!
+  return `Welcome to Naija Bite! Select options below:
 1. Select 1 to Place an order
 99. Select 99 to checkout order
 98. Select 98 to see order history
@@ -19,10 +19,7 @@ export const handleBotMessage = async (deviceId, message) => {
   const globalCommands = ["97", "98", "99", "0"];
 
   // Intercept state selection if user is actively picking menu items
-  if (
-    session.state === "ordering" &&
-    (!globalCommands.includes(input) || input === "1")
-  ) {
+  if (session.state === "ordering" && !globalCommands.includes(input)) {
     const num = parseInt(input);
     const items = await Menu.find().sort({ category: 1, name: 1 });
 
