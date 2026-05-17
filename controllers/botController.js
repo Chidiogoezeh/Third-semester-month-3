@@ -17,10 +17,14 @@ export const handleBotMessage = async (deviceId, message) => {
 
   const input = message.trim();
 
-  // Guard Rails: Global commands intercept lower ordering state flags
-  const globalCommands = ["1", "97", "98", "99", "0"];
+  // Guard Rails: Global commands intercept lower ordering state flags except when actively entering item numbers
+  const globalCommands = ["97", "98", "99", "0"];
 
-  if (session.state === "ordering" && !globalCommands.includes(input)) {
+  // If user is ordering and types "1", it should be treated as selecting the first menu item, not restarting the menu.
+  if (
+    session.state === "ordering" &&
+    (!globalCommands.includes(input) || input === "1")
+  ) {
     const num = parseInt(input);
     const items = await Menu.find();
 
@@ -98,7 +102,7 @@ export const handleBotMessage = async (deviceId, message) => {
       session.state = "scheduling";
       await session.save();
 
-      return `Order placed successfully! Order ID: ${newOrder._id}.\n\nWould you like to schedule this order? Enter a date/time (e.g., 'Today, 6 PM'), or type 'ASAP' to get options to pay immediately.`;
+      return `order placed\nOrder ID: ${newOrder._id}.\n\nWould you like to schedule this order? Enter a date/time (e.g., 'Today, 6 PM'), or type 'ASAP' to get options to pay immediately.\n\nTo start a fresh basket, select 1 to place a new order.`;
 
     case "PAY":
       if (session.state === "awaiting_payment") {

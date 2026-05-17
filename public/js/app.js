@@ -49,7 +49,14 @@ window.addEventListener("DOMContentLoaded", () => {
         "Payment Successful! Your order status has been validated and confirmed.",
         "bot",
       );
-      // Clean url parameters safely without triggering reload frame loops
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }, 1000);
+  } else if (urlParams.get("payment") === "failed") {
+    setTimeout(() => {
+      appendMessage(
+        "Transaction Verification Failed. Please try again or contact support.",
+        "bot",
+      );
       window.history.replaceState({}, document.title, window.location.pathname);
     }, 1000);
   }

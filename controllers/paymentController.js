@@ -44,7 +44,7 @@ export const verifyPayment = async (req, res) => {
 
       res.redirect("/?payment=success");
     } else {
-      res.send(`<div><h1>Transaction Verification Failed</h1></div>`);
+      res.redirect("/?payment=failed");
     }
   } catch (error) {
     res.status(500).send("Error verifying transaction framework.");
