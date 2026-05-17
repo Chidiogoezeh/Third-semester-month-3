@@ -44,14 +44,13 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get("payment") === "success") {
-    const oid = urlParams.get("orderId")
-      ? " (ID: " + urlParams.get("orderId").slice(-5) + ")"
-      : "";
+    const orderParam = urlParams.get("orderId");
+    const trailingId = orderParam ? " (ID: " + orderParam.slice(-5) + ")" : "";
     setTimeout(() => {
       appendMessage(
         "Payment Successful! Your order" +
-          oid +
-          " status has been validated and confirmed.",
+          trailingId +
+          " has been validated and confirmed.",
         "bot",
       );
       window.history.replaceState({}, document.title, window.location.pathname);

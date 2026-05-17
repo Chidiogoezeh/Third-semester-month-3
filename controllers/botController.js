@@ -28,10 +28,13 @@ export const handleBotMessage = async (deviceId, message) => {
   const input = message.trim();
 
   // State: Ordering loop - Priority over global commands unless it's a structural command
-  if (
-    session.state === "ordering" &&
-    !["0", "97", "99", "98"].includes(input)
-  ) {
+  // Intercept explicit global controls first to ensure deterministic state escape
+  if (["0", "97", "98", "99"].includes(input)) {
+    session.state = "idle";
+  }
+
+  // State: Active Item Selection Configuration
+  if (session.state === "ordering") {
     const num = parseInt(input);
     const items = await Menu.find().sort({ category: 1, name: 1 });
 
@@ -43,9 +46,9 @@ export const handleBotMessage = async (deviceId, message) => {
       });
       session.currentOrder.total += selected.price;
       await session.save();
-      return `${selected.name} added to your order. Total: #${session.currentOrder.total}.\nSelect another item number to add more, 97 to check basket, or 99 to checkout.`;
+      return `${selected.name} added to your order. Total: #${session.currentOrder.total}.\nSelect another item number to add more, 97 to see current order, or 99 to checkout order.`;
     }
-    return "Invalid selection. Please choose a valid item number from the list, 97 to view basket, or 0 to cancel.";
+    return "Invalid selection. Please choose a valid item number from the list, 97 to see current order, or 0 to cancel order.";
   }
 
   // State: Scheduling preference handling
