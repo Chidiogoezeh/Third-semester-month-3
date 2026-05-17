@@ -11,6 +11,7 @@ const SessionSchema = new mongoose.Schema({
     enum: ["idle", "ordering", "scheduling", "awaiting_payment"],
     default: "idle",
   },
+  menuSnapshot: [String],
 });
 
 export default mongoose.model("Session", SessionSchema);

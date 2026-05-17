@@ -1,6 +1,6 @@
 import socket, { sendMessage, onMessage } from "./socket-client.js";
 
-const chatWindow = document.getElementById("chat-window");
+const chatBox = document.getElementById("chat-box");
 const chatForm = document.getElementById("chat-form");
 const userInput = document.getElementById("user-input");
 
@@ -22,17 +22,23 @@ const createMessageElement = (text, sender) => {
     link.classList.add("payment-action-button");
     msgDiv.appendChild(link);
   } else {
-    const content = document.createElement("p");
-    content.textContent = text;
-    msgDiv.appendChild(content);
+    const lines = text.split("\n");
+    lines.forEach((line, index) => {
+      const p = document.createElement("p");
+      p.textContent = line;
+      msgDiv.appendChild(p);
+      if (index < lines.length - 1) {
+        msgDiv.appendChild(document.createElement("br"));
+      }
+    });
   }
   return msgDiv;
 };
 
 const appendMessage = (text, sender) => {
   const msg = createMessageElement(text, sender);
-  chatWindow.appendChild(msg);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
+  chatBox.appendChild(msg);
+  chatBox.scrollTop = chatBox.scrollHeight;
 };
 
 onMessage("bot-response", (data) => {

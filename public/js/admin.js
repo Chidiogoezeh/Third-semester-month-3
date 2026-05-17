@@ -24,7 +24,7 @@ const renderTable = (items) => {
   const thead = document.createElement("thead");
   const headerRow = document.createElement("tr");
 
-  ["Name", "Price", "Category", "Actions"].forEach((text) => {
+  ["Name", "Description", "Price", "Category", "Actions"].forEach((text) => {
     const th = document.createElement("th");
     th.textContent = text;
     headerRow.appendChild(th);
@@ -40,6 +40,9 @@ const renderTable = (items) => {
     const nameTd = document.createElement("td");
     nameTd.textContent = item.name;
 
+    const descTd = document.createElement("td");
+    descTd.textContent = item.description || "";
+
     const priceTd = document.createElement("td");
     priceTd.textContent = `#${item.price}`;
 
@@ -53,6 +56,8 @@ const renderTable = (items) => {
     editBtn.textContent = "Replace/Edit";
     editBtn.addEventListener("click", () => {
       document.getElementById("item-name").value = item.name;
+      document.getElementById("item-description").value =
+        item.description || "";
       document.getElementById("item-price").value = item.price;
       document.getElementById("item-category").value = item.category;
       editModeId = item._id;
@@ -72,7 +77,9 @@ const renderTable = (items) => {
     actionTd.appendChild(editBtn);
     actionTd.appendChild(deleteBtn);
 
-    [nameTd, priceTd, catTd, actionTd].forEach((td) => tr.appendChild(td));
+    [nameTd, descTd, priceTd, catTd, actionTd].forEach((td) =>
+      tr.appendChild(td),
+    );
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
@@ -82,6 +89,7 @@ const renderTable = (items) => {
 menuForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const name = document.getElementById("item-name").value;
+  const description = document.getElementById("item-description").value;
   const price = document.getElementById("item-price").value;
   const category = document.getElementById("item-category").value;
 
@@ -90,7 +98,12 @@ menuForm.addEventListener("submit", async (e) => {
     res = await fetch(`/api/menu/${editModeId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, price: Number(price), category }),
+      body: JSON.stringify({
+        name,
+        description,
+        price: Number(price),
+        category,
+      }),
     });
     editModeId = null;
     document.querySelector("#menu-form button").textContent = "Add Item";
@@ -98,7 +111,12 @@ menuForm.addEventListener("submit", async (e) => {
     res = await fetch("/api/menu", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, price: Number(price), category }),
+      body: JSON.stringify({
+        name,
+        description,
+        price: Number(price),
+        category,
+      }),
     });
   }
 
