@@ -37,11 +37,16 @@ export const verifyPayment = async (req, res) => {
     });
 
     if (response.data.data.status === "success") {
-      await Order.findByIdAndUpdate(orderId, {
-        paymentStatus: "paid",
-        status: "completed",
-      });
+      const updatedOrder = await Order.findByIdAndUpdate(
+        orderId,
+        {
+          paymentStatus: "paid",
+          status: "completed",
+        },
+        { new: true },
+      );
 
+      // Redirect directly to home; frontend app handles confirmation based on query params cleanly
       res.redirect("/?payment=success");
     } else {
       res.redirect("/?payment=failed");

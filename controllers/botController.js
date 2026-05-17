@@ -16,7 +16,8 @@ export const handleBotMessage = async (deviceId, message) => {
   if (!session) session = await Session.create({ deviceId });
 
   const input = message.trim();
-  const globalCommands = ["97", "98", "99", "0"];
+  // Ensure global switch commands and standard state escapes break out of the state loops
+  const globalCommands = ["1", "97", "98", "99", "0", "PAY"];
 
   // Intercept state selection if user is actively picking menu items
   if (session.state === "ordering" && !globalCommands.includes(input)) {

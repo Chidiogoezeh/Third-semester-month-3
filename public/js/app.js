@@ -19,7 +19,7 @@ const createMessageElement = (text, sender) => {
     link.href = url;
     link.target = "_blank";
     link.textContent = "Click here to securely pay via Paystack";
-    link.className = "payment-action-button"; // Styled via CSS stylesheet
+    link.className = "payment-action-button";
     msgDiv.appendChild(link);
   } else {
     const content = document.createElement("p");
