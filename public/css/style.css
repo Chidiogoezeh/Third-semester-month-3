@@ -128,3 +128,13 @@ button {
     max-width: 800px;
     margin: 0 auto;
 }
+
+.success-payment-wrapper {
+    text-align: center; 
+    padding-top: 50px; 
+    font-family: sans-serif;
+}
+
+.success-payment-wrapper h1 {
+    color: #27ae60;
+}

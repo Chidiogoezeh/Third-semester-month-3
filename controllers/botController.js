@@ -13,13 +13,28 @@ const getMainMenu = () => {
 
 export const handleBotMessage = async (deviceId, message) => {
   let session = await Session.findOne({ deviceId });
-  if (!session) session = await Session.create({ deviceId });
+  if (!session) {
+    session = await Session.create({
+      deviceId,
+      currentOrder: { items: [], total: 0 },
+      state: "idle",
+    });
+  }
+
+  // Ensure currentOrder subdocument initialization framework
+  if (!session.currentOrder) {
+    session.currentOrder = { items: [], total: 0 };
+  }
 
   const input = message.trim();
-  // Ensure global switch commands and standard state escapes break out of the state loops
-  const globalCommands = ["1", "97", "98", "99", "0", "PAY"];
+  const globalCommands = ["1", "97", "98", "99", "0"];
 
-  // Intercept state selection if user is actively picking menu items
+  // Global command interceptor to break loops/states cleanly
+  if (globalCommands.includes(input)) {
+    session.state = "idle";
+  }
+
+  // State: Ordering loop
   if (session.state === "ordering" && !globalCommands.includes(input)) {
     const num = parseInt(input);
     const items = await Menu.find().sort({ category: 1, name: 1 });
@@ -37,18 +52,33 @@ export const handleBotMessage = async (deviceId, message) => {
     return "Invalid selection. Please choose a valid item number from the list, or 0 to cancel.";
   }
 
-  // Scheduling interceptor state
+  // State: Scheduling preference handling
   if (session.state === "scheduling" && !globalCommands.includes(input)) {
     const lastOrder = await Order.findOne({ sessionId: deviceId }).sort({
       createdAt: -1,
     });
-    if (lastOrder && input.toUpperCase() !== "SKIP") {
-      lastOrder.scheduledFor = input;
-      await lastOrder.save();
+    if (lastOrder) {
+      if (input.toUpperCase() !== "SKIP") {
+        lastOrder.scheduledFor = input;
+        await lastOrder.save();
+      }
     }
     session.state = "awaiting_payment";
     await session.save();
     return `Schedule Preference Updated.\n\nType 'PAY' to proceed to your secure Paystack checkout interface page or 0 to cancel.`;
+  }
+
+  // State: Awaiting payment input check
+  if (session.state === "awaiting_payment" && !globalCommands.includes(input)) {
+    if (input.toUpperCase() === "PAY") {
+      const lastOrder = await Order.findOne({ sessionId: deviceId }).sort({
+        createdAt: -1,
+      });
+      if (!lastOrder)
+        return "No pending order found to pay for. Select 1 to place an order.";
+      return `PAY_LINK|${process.env.APP_URL || "http://localhost:3000"}/api/pay-trigger?orderId=${lastOrder._id}`;
+    }
+    return "Please type 'PAY' to complete payment, or 0 to cancel and start over.";
   }
 
   switch (input) {
@@ -103,13 +133,6 @@ export const handleBotMessage = async (deviceId, message) => {
       await session.save();
 
       return `order placed\nOrder ID: ${newOrder._id}.\n\n[Optional] Would you like to schedule this order? Enter delivery details (e.g., '6 PM'), or type 'SKIP' to pay immediately.\n\nTo start a fresh basket instead, select 1 to place a new order.`;
-
-    case "PAY":
-      const lastOrder = await Order.findOne({ sessionId: deviceId }).sort({
-        createdAt: -1,
-      });
-      if (!lastOrder) return "No order found to pay for.";
-      return `PAY_LINK|${process.env.APP_URL || "http://localhost:3000"}/api/pay-trigger?orderId=${lastOrder._id}`;
 
     case "98":
       const history = await Order.find({ sessionId: deviceId });

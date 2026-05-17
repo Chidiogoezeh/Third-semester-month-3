@@ -9,7 +9,10 @@ const fetchAndRenderMenu = async () => {
 };
 
 const renderTable = (items) => {
-  menuList.textContent = "";
+  while (menuList.firstChild) {
+    menuList.removeChild(menuList.firstChild);
+  }
+
   if (items.length === 0) {
     const p = document.createElement("p");
     p.textContent = "No items available in the menu.";
