@@ -71,14 +71,17 @@ export const handleBotMessage = async (deviceId, message) => {
   // State: Awaiting payment input check
   if (session.state === "awaiting_payment" && !globalCommands.includes(input)) {
     if (input.toUpperCase() === "PAY") {
-      const lastOrder = await Order.findOne({ sessionId: deviceId }).sort({
+      const lastOrder = await Order.findOne({
+        sessionId: deviceId,
+        status: "pending",
+      }).sort({
         createdAt: -1,
       });
       if (!lastOrder)
         return "No pending order found to pay for. Select 1 to place an order.";
       return `PAY_LINK|${process.env.APP_URL || "http://localhost:3000"}/api/pay-trigger?orderId=${lastOrder._id}`;
     }
-    return "Please type 'PAY' to complete payment, or 0 to cancel and start over.";
+    return "Please type 'PAY' to complete payment, select 1 to place a new order instead, or 0 to cancel.";
   }
 
   switch (input) {
@@ -132,7 +135,7 @@ export const handleBotMessage = async (deviceId, message) => {
       session.state = "scheduling";
       await session.save();
 
-      return `order placed\nOrder ID: ${newOrder._id}.\n\n[Optional] Would you like to schedule this order? Enter delivery details (e.g., '6 PM'), or type 'SKIP' to pay immediately.\n\nTo start a fresh basket instead, select 1 to place a new order.`;
+      return `order placed\nOrder ID: ${newOrder._id}.\n\n[Optional] Would you like to schedule this order? Enter delivery details (e.g., '6 PM'), or type 'SKIP' to pay immediately.\n\nAlternatively, select 1 to place a new order.`;
 
     case "98":
       const history = await Order.find({ sessionId: deviceId });
@@ -153,10 +156,18 @@ export const handleBotMessage = async (deviceId, message) => {
       );
 
     case "0":
+      // If there is an active checkout order awaiting payment, cancel it too
+      await Order.updateMany(
+        { sessionId: deviceId, status: "pending" },
+        { status: "cancelled" },
+      );
       session.currentOrder = { items: [], total: 0 };
       session.state = "idle";
       await session.save();
-      return "Current order cleared and actions reset.\n\n" + getMainMenu();
+      return (
+        "Current order canceled, basket cleared, and actions reset.\n\n" +
+        getMainMenu()
+      );
 
     default:
       return getMainMenu();
