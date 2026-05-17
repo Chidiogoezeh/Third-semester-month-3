@@ -3,6 +3,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import connectDB from "./config/db.js";
 import { handleBotMessage } from "./controllers/botController.js";
+import Session from "./models/Session.js";
 import apiRoutes from "./routes/api.js";
 
 const app = express();

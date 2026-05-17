@@ -6,7 +6,11 @@ const SessionSchema = new mongoose.Schema({
     items: [{ name: String, price: Number }],
     total: { type: Number, default: 0 },
   },
-  state: { type: String, default: "idle" }, // idle, ordering
+  state: {
+    type: String,
+    enum: ["idle", "ordering", "scheduling", "awaiting_payment"],
+    default: "idle",
+  },
 });
 
 export default mongoose.model("Session", SessionSchema);
