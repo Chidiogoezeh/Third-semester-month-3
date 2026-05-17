@@ -116,9 +116,15 @@ button {
     cursor: pointer;
 }
 
-@media (
-    max-width: 600px) { #chat-container { 
-    height: 100vh; 
-    border-radius: 0; 
+@media (max-width: 600px) {
+    #chat-container { 
+        height: 100vh; 
+        border-radius: 0; 
     } 
+}
+
+.admin-container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
 }
