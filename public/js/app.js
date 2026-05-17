@@ -44,13 +44,18 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get("payment") === "success") {
+    const oid = urlParams.get("orderId")
+      ? " (ID: " + urlParams.get("orderId").slice(-5) + ")"
+      : "";
     setTimeout(() => {
       appendMessage(
-        "Payment Successful! Your order status has been validated and confirmed.",
+        "Payment Successful! Your order" +
+          oid +
+          " status has been validated and confirmed.",
         "bot",
       );
       window.history.replaceState({}, document.title, window.location.pathname);
-    }, 1000);
+    }, 500);
   } else if (urlParams.get("payment") === "failed") {
     setTimeout(() => {
       appendMessage(
@@ -58,7 +63,7 @@ window.addEventListener("DOMContentLoaded", () => {
         "bot",
       );
       window.history.replaceState({}, document.title, window.location.pathname);
-    }, 1000);
+    }, 500);
   }
 });
 

@@ -28,8 +28,9 @@ export const handleBotMessage = async (deviceId, message) => {
   const input = message.trim();
   const globalCommands = ["1", "97", "98", "99", "0"];
 
-  if (globalCommands.includes(input) && input !== "97" && input !== "99") {
-    session.state = "idle";
+  if (globalCommands.includes(input)) {
+    if (input === "1") session.state = "ordering";
+    if (input === "0") session.state = "idle";
   }
 
   // State: Ordering loop
