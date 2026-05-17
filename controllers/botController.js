@@ -59,11 +59,20 @@ export const handleBotMessage = async (deviceId, message) => {
       session.state = "ordering";
       await session.save();
 
-      let menuList = "Our Menu:\n";
-      items.forEach((item, index) => {
-        menuList += `${index + 1}. ${item.name} (${item.category}) - #${item.price}\n`;
+      let menuList = "Our Menu:\n\n";
+      const categories = [...new Set(items.map((item) => item.category))];
+
+      categories.forEach((category) => {
+        menuList += `--- Category: ${category} ---\n`;
+        items.forEach((item, index) => {
+          if (item.category === category) {
+            menuList += `${index + 1}. ${item.name}: ${item.description || ""} - #${item.price}\n`;
+          }
+        });
+        menuList += "\n";
       });
-      menuList += "\nType the number of the item you wish to add.";
+
+      menuList += "Type the number of the item you wish to add.";
       return menuList;
 
     case "97":
@@ -89,7 +98,7 @@ export const handleBotMessage = async (deviceId, message) => {
       session.state = "scheduling";
       await session.save();
 
-      return `Order placed successfully! Order ID: ${newOrder._id}.\n\nWould you like to schedule this order? Enter a date/time (e.g., 'Today, 6 PM') or type 'ASAP' to proceed directly to payment.`;
+      return `Order placed successfully! Order ID: ${newOrder._id}.\n\nWould you like to schedule this order? Enter a date/time (e.g., 'Today, 6 PM'), or type 'ASAP' to get options to pay immediately.`;
 
     case "PAY":
       if (session.state === "awaiting_payment") {

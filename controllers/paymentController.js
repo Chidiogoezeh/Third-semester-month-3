@@ -42,12 +42,7 @@ export const verifyPayment = async (req, res) => {
         status: "completed",
       });
 
-      res.send(`
-        <div class="success-payment-wrapper">
-          <h1>Payment Successful!</h1>
-          <p>Your order status has been validated. You can return to the chatbot interface now.</p>
-        </div>
-      `);
+      res.redirect("/?payment=success");
     } else {
       res.send(`<div><h1>Transaction Verification Failed</h1></div>`);
     }
