@@ -18,8 +18,8 @@ export const initializePayment = async (req, res) => {
       PAYSTACK_CONFIG.initialize,
       {
         email: "customer@example.com",
-        amount: Math.round(order.totalAmount * 100), // Secure Kobo Conversion Trap Fix
-        callback_url: `${appUrl}/?payment=success&orderId=${orderId}`,
+        amount: Math.round(order.totalAmount * 100),
+        callback_url: `${appUrl}/index.html?payment=success&orderId=${orderId}`, // Ensure explicit routing file context if static
         reference: `REF_${orderId}_${Date.now()}`,
       },
       { headers: { Authorization: `Bearer ${PAYSTACK_CONFIG.secret_key}` } },

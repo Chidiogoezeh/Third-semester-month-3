@@ -1,7 +1,7 @@
 import Menu from "../models/Menu.js";
 import Session from "../models/Session.js";
 import Order from "../models/Order.js";
-import { formatCurrency } from "../utils/helpers.js";
+import { formatCurrency, validateSelection } from "../utils/helpers.js";
 
 const getMainMenu = () => {
   return `Welcome to Naija Bite! Select options below:
@@ -12,11 +12,11 @@ const getMainMenu = () => {
 0. Select 0 to cancel order`;
 };
 
-export const handleBotMessage = async (deviceId, message) => {
-  let session = await Session.findOne({ deviceId });
+export const handleBotMessage = async (sessionId, message) => {
+  let session = await Session.findOne({ deviceId: sessionId }); // keep deviceId schema matching if needed, but parameter must map right
   if (!session) {
     session = await Session.create({
-      deviceId,
+      deviceId: sessionId, // Use the incoming payload correctly
       currentOrder: { items: [], total: 0 },
       state: "idle",
       menuSnapshot: [],
@@ -90,7 +90,10 @@ export const handleBotMessage = async (deviceId, message) => {
 
       if (isNumericInput && input === "99") {
         if (!session.currentOrder || session.currentOrder.items.length === 0) {
-          return "No order to place. Select 1 to place a new order.";
+          return (
+            "No order to place. Select 1 to place a new order.\n\n" +
+            getMainMenu()
+          );
         }
         // Move strictly forward to scheduling
         session.state = "scheduling";
@@ -116,6 +119,11 @@ export const handleBotMessage = async (deviceId, message) => {
 
       // Handle item selection if inside ordering state
       if (session.state === "ordering" && isNumericInput) {
+        // Use the utility to confirm boundaries safely before parsing the document IDs
+        if (!validateSelection(input, session.menuSnapshot.length)) {
+          return "Invalid menu option selected. Please choose a valid item number or press 0 to cancel.";
+        }
+
         const num = parseInt(input, 10);
         if (num > 0 && num <= session.menuSnapshot.length) {
           const targetId = session.menuSnapshot[num - 1];
