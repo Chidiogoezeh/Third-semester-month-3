@@ -1,11 +1,14 @@
 import express from "express";
-import Menu from "../models/Menu.js";
 import {
   initializePayment,
-  verifyPayment,
+  handlePaystackWebhook,
 } from "../controllers/paymentController.js";
+import Menu from "../models/Menu.js";
 
 const router = express.Router();
+
+router.get("/pay-trigger", initializePayment);
+router.post("/paystack-webhook", express.json(), handlePaystackWebhook);
 
 router.get("/menu", async (req, res) => {
   const items = await Menu.find();
@@ -25,11 +28,8 @@ router.put("/menu/:id", async (req, res) => {
 });
 
 router.delete("/menu/:id", async (req, res) => {
-  await Menu.findByIdAndDelete(req.params.id);
+  await Menu.findByIdAndUpdate(req.params.id, { isDeleted: true });
   res.json({ success: true });
 });
-
-router.get("/pay-trigger", initializePayment);
-router.get("/payment-success", verifyPayment);
 
 export default router;

@@ -20,196 +20,165 @@ export const handleBotMessage = async (deviceId, message) => {
       currentOrder: { items: [], total: 0 },
       state: "idle",
       menuSnapshot: [],
+      menuVersion: 1,
     });
-  }
-
-  if (!session.currentOrder) {
-    session.currentOrder = { items: [], total: 0 };
   }
 
   const input = message.trim();
-
-  // Strict Input Validation: Check if the string matches a strict number pattern for command options
   const isNumericInput = /^\d+$/.test(input);
 
-  // Global Structural Interceptor: Immediate routing exit maps
-  if (isNumericInput && ["0", "1", "97", "98", "99"].includes(input)) {
-    if (input === "0") {
-      await Order.updateMany(
-        { sessionId: deviceId, status: "pending" },
-        { status: "cancelled" },
-      );
-      session.currentOrder = { items: [], total: 0 };
-      session.state = "idle";
-      session.menuSnapshot = [];
-      await session.save();
-      return (
-        "Current actions reset, basket cleared, and pending orders cancelled.\n\n" +
-        getMainMenu()
-      );
-    }
+  // Global Cancel Hook (Always Active)
+  if (isNumericInput && input === "0") {
+    await Order.updateMany(
+      { sessionId: deviceId, status: "pending" },
+      { status: "cancelled" },
+    );
+    session.currentOrder = { items: [], total: 0 };
+    session.state = "idle";
+    session.menuSnapshot = [];
+    await session.save();
+    return (
+      "Current actions reset, basket cleared, and pending orders cancelled.\n\n" +
+      getMainMenu()
+    );
+  }
 
-    if (input === "1") {
-      const items = await Menu.find().sort({ category: 1, name: 1 });
-      if (items.length === 0) {
-        return "The menu is currently empty. Please check back later!";
-      }
-
-      session.state = "ordering";
-      session.menuSnapshot = items.map((item) => item._id.toString());
-      await session.save();
-
-      let menuList = "Our Menu:\n\n";
-      const categories = [...new Set(items.map((item) => item.category))];
-
-      let overallIndex = 1;
-      categories.forEach((category) => {
-        menuList += `--- Category: ${category} ---\n`;
-        items.forEach((item) => {
-          if (item.category === category) {
-            const desc = item.description ? ` (${item.description})` : "";
-            menuList += `${overallIndex}. ${item.name}${desc} - ${formatCurrency(item.price)}\n`;
-            overallIndex++;
-          }
+  // State-Isolated Routing Engine
+  switch (session.state) {
+    case "idle":
+    case "ordering":
+      if (isNumericInput && input === "1") {
+        // Fetch current active items matching the session's menu expectations
+        const items = await Menu.find({ isDeleted: { $ne: true } }).sort({
+          category: 1,
+          name: 1,
         });
-        menuList += "\n";
-      });
+        if (items.length === 0) return "The menu is currently empty.";
 
-      menuList += "Type the number of the item you wish to add to your basket.";
-      return menuList;
-    }
+        session.state = "ordering";
+        session.menuSnapshot = items.map((item) => item._id.toString());
+        await session.save();
 
-    if (input === "97") {
-      if (!session.currentOrder || session.currentOrder.items.length === 0) {
-        return "Your current basket is empty. Select 1 to start a new order.";
+        let menuList = "Our Menu:\n\n";
+        const categories = [...new Set(items.map((item) => item.category))];
+        let overallIndex = 1;
+
+        categories.forEach((category) => {
+          menuList += `--- Category: ${category} ---\n`;
+          items.forEach((item) => {
+            if (item.category === category) {
+              menuList += `${overallIndex}. ${item.name} - ${formatCurrency(item.price)}\n`;
+              overallIndex++;
+            }
+          });
+          menuList += "\n";
+        });
+        return (
+          menuList + "Type the number of the item to add it to your basket."
+        );
       }
-      const currentItems = session.currentOrder.items
-        .map((i) => `${i.name} (${formatCurrency(i.price)})`)
-        .join("\n");
-      return `Current Order Basket:\n${currentItems}\n\nTotal: ${formatCurrency(session.currentOrder.total)}\n\nSelect 99 to checkout or 1 to add more items.`;
-    }
 
-    if (input === "99") {
-      if (!session.currentOrder || session.currentOrder.items.length === 0) {
-        if (
-          session.state === "scheduling" ||
-          session.state === "awaiting_payment"
-        ) {
-          const existingPendingOrder = await Order.findOne({
-            sessionId: deviceId,
-            status: "pending",
-            paymentStatus: "unpaid",
-          }).sort({ createdAt: -1 });
-
-          if (existingPendingOrder) {
-            return `You already have an order checked out (Order ID: ${existingPendingOrder._id}).\n\n[Optional] Type a delivery schedule (e.g., '6 PM'), or type 'SKIP' to move directly to payment.`;
-          }
+      if (isNumericInput && input === "97") {
+        if (!session.currentOrder || session.currentOrder.items.length === 0) {
+          return "Your basket is empty. Select 1 to start a new order.";
         }
-        return "No order to place.\n\nSelect 1 to place a new order.";
+        const currentItems = session.currentOrder.items
+          .map((i) => `${i.name} (${formatCurrency(i.price)})`)
+          .join("\n");
+        return `Current Order Basket:\n${currentItems}\n\nTotal: ${formatCurrency(session.currentOrder.total)}\n\nSelect 99 to checkout.`;
       }
 
-      let targetOrder = await Order.findOne({
+      if (isNumericInput && input === "99") {
+        if (!session.currentOrder || session.currentOrder.items.length === 0) {
+          return "No order to place. Select 1 to place a new order.";
+        }
+        // Move strictly forward to scheduling
+        session.state = "scheduling";
+        await session.save();
+        return `Order initialized! Total: ${formatCurrency(session.currentOrder.total)}.\n\n[Optional] Would you like to schedule this order? Enter details (e.g., '6 PM'), or type 'SKIP' to pay immediately.`;
+      }
+
+      if (isNumericInput && input === "98") {
+        const history = await Order.find({ sessionId: deviceId });
+        if (history.length === 0)
+          return "No previous order history found.\n\n" + getMainMenu();
+        return (
+          "Order History:\n" +
+          history
+            .map(
+              (o) =>
+                `ID: ${o._id.toString().slice(-5)} - ${formatCurrency(o.totalAmount)} | Payment: ${o.paymentStatus}`,
+            )
+            .join("\n") +
+          "\n\nSelect 1 to place an order."
+        );
+      }
+
+      // Handle item selection if inside ordering state
+      if (session.state === "ordering" && isNumericInput) {
+        const num = parseInt(input, 10);
+        if (num > 0 && num <= session.menuSnapshot.length) {
+          const targetId = session.menuSnapshot[num - 1];
+          const selected = await Menu.findOne({
+            _id: targetId,
+            isDeleted: { $ne: true },
+          });
+
+          if (!selected)
+            return "This item was modified or removed. Type 1 to refresh menu.";
+
+          session.currentOrder.items.push({
+            name: selected.name,
+            price: selected.price,
+          });
+          session.currentOrder.total += selected.price;
+          await session.save();
+          return `${selected.name} added. Total: ${formatCurrency(session.currentOrder.total)}.\nSelect another item number, 97 to view, or 99 to checkout.`;
+        }
+      }
+      return "Invalid selection. Please follow menu choices or select 0 to reset.";
+
+    case "scheduling":
+      // Block processing options like '1' or '97' from mangling text values
+      const schedulePreference =
+        input.toUpperCase() === "SKIP" ? "ASAP" : input;
+
+      // Idempotent Order Creation matching current session configuration
+      let openOrder = await Order.findOne({
         sessionId: deviceId,
         status: "pending",
         paymentStatus: "unpaid",
-        totalAmount: session.currentOrder.total,
-      }).sort({ createdAt: -1 });
-
-      if (!targetOrder) {
-        targetOrder = await Order.create({
+      });
+      if (!openOrder) {
+        openOrder = await Order.create({
           sessionId: deviceId,
           items: session.currentOrder.items,
           totalAmount: session.currentOrder.total,
+          scheduledFor: schedulePreference,
         });
+      } else {
+        openOrder.scheduledFor = schedulePreference;
+        await openOrder.save();
       }
 
-      session.currentOrder = { items: [], total: 0 };
-      session.menuSnapshot = [];
-      session.state = "scheduling";
+      session.currentOrder = { items: [], total: 0 }; // Clear context safe state
+      session.state = "awaiting_payment";
       await session.save();
+      return `Schedule Preference Set to: ${schedulePreference}.\n\nType 'PAY' to proceed to your secure Paystack payment page or 0 to cancel.`;
 
-      return `order placed\nOrder ID: ${targetOrder._id}.\n\n[Optional] Would you like to schedule this order? Enter delivery details (e.g., '6 PM'), or type 'SKIP' to pay immediately.\n\nAlternatively, select 1 to place a new order.`;
-    }
-
-    if (input === "98") {
-      const history = await Order.find({ sessionId: deviceId });
-      if (history.length === 0) {
-        return (
-          "No previous order history found for this device.\n\n" + getMainMenu()
-        );
+    case "awaiting_payment":
+      if (input.toUpperCase() === "PAY") {
+        const pendingOrder = await Order.findOne({
+          sessionId: deviceId,
+          status: "pending",
+        }).sort({ createdAt: -1 });
+        if (!pendingOrder)
+          return "No pending order found. Select 1 to restart.";
+        return `PAY_LINK|${process.env.APP_URL || "http://localhost:3000"}/api/pay-trigger?orderId=${pendingOrder._id}`;
       }
-      return (
-        "Order History:\n" +
-        history
-          .map(
-            (o) =>
-              `ID: ${o._id.toString().slice(-5)} - ${formatCurrency(o.totalAmount)} | Payment: ${o.paymentStatus} | Scheduled: ${o.scheduledFor}`,
-          )
-          .join("\n") +
-        "\n\nSelect 1 to place a new order."
-      );
-    }
+      return "Please type 'PAY' to complete payment, or 0 to cancel.";
+
+    default:
+      return getMainMenu();
   }
-
-  // State Handler: Ordering Item Selection
-  if (session.state === "ordering") {
-    if (!isNumericInput) {
-      return "Invalid selection. Please enter a valid item number from the list.";
-    }
-    const num = parseInt(input, 10);
-    if (num > 0 && num <= session.menuSnapshot.length) {
-      const targetId = session.menuSnapshot[num - 1];
-      const selected = await Menu.findById(targetId);
-
-      if (!selected) {
-        return "This item is no longer available. Select 1 to refresh the updated menu list.";
-      }
-
-      session.currentOrder.items.push({
-        name: selected.name,
-        price: selected.price,
-      });
-      session.currentOrder.total += selected.price;
-      await session.save();
-
-      return `${selected.name} added to your order. Total: ${formatCurrency(session.currentOrder.total)}.\nSelect another item number to add more, 97 to see current order, or 99 to checkout order.`;
-    }
-    return "Invalid selection. Please choose a valid item number from the list, 97 to see current order, or 0 to cancel order.";
-  }
-
-  // State Handler: Scheduling Flow (Strict String validation to block empty spaces)
-  if (session.state === "scheduling") {
-    if (!input) {
-      return "Please enter a delivery details string or type 'SKIP' to skip.";
-    }
-    const lastOrder = await Order.findOne({ sessionId: deviceId }).sort({
-      createdAt: -1,
-    });
-    if (lastOrder) {
-      if (input.toUpperCase() !== "SKIP") {
-        lastOrder.scheduledFor = input;
-        await lastOrder.save();
-      }
-    }
-    session.state = "awaiting_payment";
-    await session.save();
-    return `Schedule Preference Updated.\n\nType 'PAY' to proceed to your secure Paystack checkout interface page or 0 to cancel.`;
-  }
-
-  // State Handler: Awaiting Payment Action
-  if (session.state === "awaiting_payment") {
-    if (input.toUpperCase() === "PAY") {
-      const lastOrder = await Order.findOne({
-        sessionId: deviceId,
-        status: "pending",
-      }).sort({ createdAt: -1 });
-
-      if (!lastOrder)
-        return "No pending order found to pay for. Select 1 to place an order.";
-      return `PAY_LINK|${process.env.APP_URL || "http://localhost:3000"}/api/pay-trigger?orderId=${lastOrder._id}`;
-    }
-    return "Please type 'PAY' to complete payment, select 1 to place a new order instead, or 0 to cancel.";
-  }
-
-  return getMainMenu();
 };
