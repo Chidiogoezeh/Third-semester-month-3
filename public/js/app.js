@@ -56,7 +56,13 @@ window.addEventListener("DOMContentLoaded", () => {
       appendMessage(
         "Payment Successful! Your order" +
           trailingId +
-          " has been validated and confirmed. Select 1 to place a new order.",
+          " has been validated and confirmed.\n\n" +
+          "Welcome to Naija Bite! Select options below:\n" +
+          "1. Select 1 to Place a new order\n" +
+          "99. Select 99 to checkout order\n" +
+          "98. Select 98 to see order history\n" +
+          "97. Select 97 to see current order\n" +
+          "0. Select 0 to cancel order",
         "bot",
       );
       window.history.replaceState({}, document.title, window.location.pathname);

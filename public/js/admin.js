@@ -2,6 +2,9 @@ const menuForm = document.getElementById("menu-form");
 const menuList = document.getElementById("menu-list");
 let editModeId = null;
 
+// Fallback matching administrative secret configuration token
+const ADMIN_TOKEN = "SuperSecretAdminKey123";
+
 const fetchAndRenderMenu = async () => {
   const res = await fetch("/api/menu");
   const items = await res.json();
@@ -13,7 +16,7 @@ const renderTable = (items) => {
     menuList.removeChild(menuList.firstChild);
   }
 
-  if (items.length === 0) {
+  if (!items || items.length === 0) {
     const p = document.createElement("p");
     p.textContent = "No items available in the menu.";
     menuList.appendChild(p);
@@ -70,6 +73,7 @@ const renderTable = (items) => {
     deleteBtn.addEventListener("click", async () => {
       const deleteRes = await fetch(`/api/menu/${item._id}`, {
         method: "DELETE",
+        headers: { "x-admin-secret": ADMIN_TOKEN },
       });
       if (deleteRes.ok) fetchAndRenderMenu();
     });
@@ -93,33 +97,30 @@ menuForm.addEventListener("submit", async (e) => {
   const price = document.getElementById("item-price").value;
   const category = document.getElementById("item-category").value;
 
-  // Input Validation: Ensure values aren't empty and price is a valid integer string
   if (!name || !price || isNaN(parseInt(price, 10))) return;
 
   let res;
+  const payload = { name, description, price: parseInt(price, 10), category };
+
   if (editModeId) {
     res = await fetch(`/api/menu/${editModeId}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        description,
-        price: parseInt(price, 10),
-        category,
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-secret": ADMIN_TOKEN,
+      },
+      body: JSON.stringify(payload),
     });
     editModeId = null;
     document.querySelector("#menu-form button").textContent = "Add Item";
   } else {
     res = await fetch("/api/menu", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        description,
-        price: parseInt(price, 10),
-        category,
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-secret": ADMIN_TOKEN,
+      },
+      body: JSON.stringify(payload),
     });
   }
 
