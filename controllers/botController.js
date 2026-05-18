@@ -1,6 +1,7 @@
 import Menu from "../models/Menu.js";
 import Session from "../models/Session.js";
 import Order from "../models/Order.js";
+import { formatCurrency } from "../utils/helpers.js";
 
 const getMainMenu = () => {
   return `Welcome to Naija Bite! Select options below:
@@ -28,8 +29,11 @@ export const handleBotMessage = async (deviceId, message) => {
 
   const input = message.trim();
 
+  // Strict Input Validation: Check if the string matches a strict number pattern for command options
+  const isNumericInput = /^\d+$/.test(input);
+
   // Global Structural Interceptor: Immediate routing exit maps
-  if (["0", "1", "97", "98", "99"].includes(input)) {
+  if (isNumericInput && ["0", "1", "97", "98", "99"].includes(input)) {
     if (input === "0") {
       await Order.updateMany(
         { sessionId: deviceId, status: "pending" },
@@ -64,7 +68,7 @@ export const handleBotMessage = async (deviceId, message) => {
         items.forEach((item) => {
           if (item.category === category) {
             const desc = item.description ? ` (${item.description})` : "";
-            menuList += `${overallIndex}. ${item.name}${desc} - #${item.price}\n`;
+            menuList += `${overallIndex}. ${item.name}${desc} - ${formatCurrency(item.price)}\n`;
             overallIndex++;
           }
         });
@@ -80,14 +84,13 @@ export const handleBotMessage = async (deviceId, message) => {
         return "Your current basket is empty. Select 1 to start a new order.";
       }
       const currentItems = session.currentOrder.items
-        .map((i) => `${i.name} (#${i.price})`)
+        .map((i) => `${i.name} (${formatCurrency(i.price)})`)
         .join("\n");
-      return `Current Order Basket:\n${currentItems}\n\nTotal: #${session.currentOrder.total}\n\nSelect 99 to checkout or 1 to add more items.`;
+      return `Current Order Basket:\n${currentItems}\n\nTotal: ${formatCurrency(session.currentOrder.total)}\n\nSelect 99 to checkout or 1 to add more items.`;
     }
 
     if (input === "99") {
       if (!session.currentOrder || session.currentOrder.items.length === 0) {
-        // Idempotency safety net: Check if they hit 99 again while already in scheduling state
         if (
           session.state === "scheduling" ||
           session.state === "awaiting_payment"
@@ -105,7 +108,6 @@ export const handleBotMessage = async (deviceId, message) => {
         return "No order to place.\n\nSelect 1 to place a new order.";
       }
 
-      // Check if a matching pending order exists with the exact same total amount to prevent accidental duplicates
       let targetOrder = await Order.findOne({
         sessionId: deviceId,
         status: "pending",
@@ -121,7 +123,6 @@ export const handleBotMessage = async (deviceId, message) => {
         });
       }
 
-      // Safe state updates: clear current basket items only after establishing/finding the Order ID
       session.currentOrder = { items: [], total: 0 };
       session.menuSnapshot = [];
       session.state = "scheduling";
@@ -142,7 +143,7 @@ export const handleBotMessage = async (deviceId, message) => {
         history
           .map(
             (o) =>
-              `ID: ${o._id.toString().slice(-5)} - #${o.totalAmount} | Payment: ${o.paymentStatus} | Scheduled: ${o.scheduledFor}`,
+              `ID: ${o._id.toString().slice(-5)} - ${formatCurrency(o.totalAmount)} | Payment: ${o.paymentStatus} | Scheduled: ${o.scheduledFor}`,
           )
           .join("\n") +
         "\n\nSelect 1 to place a new order."
@@ -152,8 +153,11 @@ export const handleBotMessage = async (deviceId, message) => {
 
   // State Handler: Ordering Item Selection
   if (session.state === "ordering") {
-    const num = parseInt(input);
-    if (!isNaN(num) && num > 0 && num <= session.menuSnapshot.length) {
+    if (!isNumericInput) {
+      return "Invalid selection. Please enter a valid item number from the list.";
+    }
+    const num = parseInt(input, 10);
+    if (num > 0 && num <= session.menuSnapshot.length) {
       const targetId = session.menuSnapshot[num - 1];
       const selected = await Menu.findById(targetId);
 
@@ -168,13 +172,16 @@ export const handleBotMessage = async (deviceId, message) => {
       session.currentOrder.total += selected.price;
       await session.save();
 
-      return `${selected.name} added to your order. Total: #${session.currentOrder.total}.\nSelect another item number to add more, 97 to see current order, or 99 to checkout order.`;
+      return `${selected.name} added to your order. Total: ${formatCurrency(session.currentOrder.total)}.\nSelect another item number to add more, 97 to see current order, or 99 to checkout order.`;
     }
     return "Invalid selection. Please choose a valid item number from the list, 97 to see current order, or 0 to cancel order.";
   }
 
-  // State Handler: Scheduling Flow
+  // State Handler: Scheduling Flow (Strict String validation to block empty spaces)
   if (session.state === "scheduling") {
+    if (!input) {
+      return "Please enter a delivery details string or type 'SKIP' to skip.";
+    }
     const lastOrder = await Order.findOne({ sessionId: deviceId }).sort({
       createdAt: -1,
     });

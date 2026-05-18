@@ -1,13 +1,10 @@
 export const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-  }).format(amount);
+  return `₦${amount}`;
 };
 
 export const validateSelection = (input, max) => {
-  const num = parseInt(input);
-  return !isNaN(num) && num >= 0 && num <= max;
+  const num = parseInt(input, 10);
+  return !isNaN(num) && String(num) === input.trim() && num >= 0 && num <= max;
 };
 
 export const generateSessionId = () => {

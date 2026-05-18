@@ -44,7 +44,7 @@ const renderTable = (items) => {
     descTd.textContent = item.description || "";
 
     const priceTd = document.createElement("td");
-    priceTd.textContent = `#${item.price}`;
+    priceTd.textContent = `₦${item.price}`;
 
     const catTd = document.createElement("td");
     catTd.textContent = item.category;
@@ -56,7 +56,8 @@ const renderTable = (items) => {
     editBtn.textContent = "Replace/Edit";
     editBtn.addEventListener("click", () => {
       document.getElementById("item-name").value = item.name;
-      document.getElementById("item-description").value = item.description || "";
+      document.getElementById("item-description").value =
+        item.description || "";
       document.getElementById("item-price").value = item.price;
       document.getElementById("item-category").value = item.category;
       editModeId = item._id;
@@ -67,14 +68,18 @@ const renderTable = (items) => {
     deleteBtn.className = "delete-btn";
     deleteBtn.textContent = "Delete";
     deleteBtn.addEventListener("click", async () => {
-      const deleteRes = await fetch(`/api/menu/${item._id}`, { method: "DELETE" });
+      const deleteRes = await fetch(`/api/menu/${item._id}`, {
+        method: "DELETE",
+      });
       if (deleteRes.ok) fetchAndRenderMenu();
     });
 
     actionTd.appendChild(editBtn);
     actionTd.appendChild(deleteBtn);
 
-    [nameTd, descTd, priceTd, catTd, actionTd].forEach((td) => tr.appendChild(td));
+    [nameTd, descTd, priceTd, catTd, actionTd].forEach((td) =>
+      tr.appendChild(td),
+    );
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
@@ -83,17 +88,25 @@ const renderTable = (items) => {
 
 menuForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const name = document.getElementById("item-name").value;
-  const description = document.getElementById("item-description").value;
+  const name = document.getElementById("item-name").value.trim();
+  const description = document.getElementById("item-description").value.trim();
   const price = document.getElementById("item-price").value;
   const category = document.getElementById("item-category").value;
+
+  // Input Validation: Ensure values aren't empty and price is a valid integer string
+  if (!name || !price || isNaN(parseInt(price, 10))) return;
 
   let res;
   if (editModeId) {
     res = await fetch(`/api/menu/${editModeId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description, price: Number(price), category }),
+      body: JSON.stringify({
+        name,
+        description,
+        price: parseInt(price, 10),
+        category,
+      }),
     });
     editModeId = null;
     document.querySelector("#menu-form button").textContent = "Add Item";
@@ -101,7 +114,12 @@ menuForm.addEventListener("submit", async (e) => {
     res = await fetch("/api/menu", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description, price: Number(price), category }),
+      body: JSON.stringify({
+        name,
+        description,
+        price: parseInt(price, 10),
+        category,
+      }),
     });
   }
 
