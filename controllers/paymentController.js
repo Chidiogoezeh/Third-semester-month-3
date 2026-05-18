@@ -10,6 +10,11 @@ export const initializePayment = async (req, res) => {
     const order = await Order.findById(orderId);
     if (!order) return res.status(404).send("Order not found");
 
+    // Idempotency Guard: If the order was already paid, prevent re-initializing with Paystack
+    if (order.paymentStatus === "paid" || order.status === "completed") {
+      return res.redirect("/?payment=success&orderId=" + orderId);
+    }
+
     const appUrl =
       process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
 
@@ -18,7 +23,10 @@ export const initializePayment = async (req, res) => {
       {
         email,
         amount: order.totalAmount * 100,
+        // OrderId is explicitly included in callback architecture
         callback_url: `${appUrl}/api/payment-success?orderId=${orderId}`,
+        // MongoDB Order ID is used as Paystack's reference to ensure 1:1 mapped uniqueness
+        reference: `REF_${orderId}_${Date.now()}`,
       },
       {
         headers: { Authorization: `Bearer ${PAYSTACK_CONFIG.secret_key}` },

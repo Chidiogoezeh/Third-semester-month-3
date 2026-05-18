@@ -87,20 +87,47 @@ export const handleBotMessage = async (deviceId, message) => {
 
     if (input === "99") {
       if (!session.currentOrder || session.currentOrder.items.length === 0) {
+        // Idempotency safety net: Check if they hit 99 again while already in scheduling state
+        if (
+          session.state === "scheduling" ||
+          session.state === "awaiting_payment"
+        ) {
+          const existingPendingOrder = await Order.findOne({
+            sessionId: deviceId,
+            status: "pending",
+            paymentStatus: "unpaid",
+          }).sort({ createdAt: -1 });
+
+          if (existingPendingOrder) {
+            return `You already have an order checked out (Order ID: ${existingPendingOrder._id}).\n\n[Optional] Type a delivery schedule (e.g., '6 PM'), or type 'SKIP' to move directly to payment.`;
+          }
+        }
         return "No order to place.\n\nSelect 1 to place a new order.";
       }
-      const newOrder = await Order.create({
-        sessionId: deviceId,
-        items: session.currentOrder.items,
-        totalAmount: session.currentOrder.total,
-      });
 
+      // Check if a matching pending order exists with the exact same total amount to prevent accidental duplicates
+      let targetOrder = await Order.findOne({
+        sessionId: deviceId,
+        status: "pending",
+        paymentStatus: "unpaid",
+        totalAmount: session.currentOrder.total,
+      }).sort({ createdAt: -1 });
+
+      if (!targetOrder) {
+        targetOrder = await Order.create({
+          sessionId: deviceId,
+          items: session.currentOrder.items,
+          totalAmount: session.currentOrder.total,
+        });
+      }
+
+      // Safe state updates: clear current basket items only after establishing/finding the Order ID
       session.currentOrder = { items: [], total: 0 };
       session.menuSnapshot = [];
       session.state = "scheduling";
       await session.save();
 
-      return `order placed\nOrder ID: ${newOrder._id}.\n\n[Optional] Would you like to schedule this order? Enter delivery details (e.g., '6 PM'), or type 'SKIP' to pay immediately.\n\nAlternatively, select 1 to place a new order.`;
+      return `order placed\nOrder ID: ${targetOrder._id}.\n\n[Optional] Would you like to schedule this order? Enter delivery details (e.g., '6 PM'), or type 'SKIP' to pay immediately.\n\nAlternatively, select 1 to place a new order.`;
     }
 
     if (input === "98") {
