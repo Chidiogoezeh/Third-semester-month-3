@@ -17,11 +17,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 app.use("/api", apiRoutes);
 
+const INITIAL_GREETING = `Welcome to Naija Bite! Select options below:
+1. Select 1 to Place an order
+99. Select 99 to checkout order
+98. Select 98 to see order history
+97. Select 97 to see current order
+0. Select 0 to cancel order`;
+
 io.on("connection", (socket) => {
   socket.on("join-chat", async ({ sessionId }) => {
     socket.join(sessionId);
 
-    // Check if user has an ongoing session state to persist conversation naturally
     const session = await Session.findOne({ deviceId: sessionId });
     if (session && session.state !== "idle") {
       let recoveryGreeting = "Welcome back! ";
@@ -37,8 +43,7 @@ io.on("connection", (socket) => {
       }
       socket.emit("bot-response", { text: recoveryGreeting });
     } else {
-      const initialGreeting = `Welcome to Naija Bite! Select options below:\n1. Select 1 to Place an order\n99. Select 99 to checkout order\n98. Select 98 to see order history\n97. Select 97 to see current order\n0. Select 0 to cancel order`;
-      socket.emit("bot-response", { text: initialGreeting });
+      socket.emit("bot-response", { text: INITIAL_GREETING });
     }
   });
 

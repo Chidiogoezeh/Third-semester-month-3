@@ -4,9 +4,7 @@ const chatBox = document.getElementById("chat-box");
 const chatForm = document.getElementById("chat-form");
 const userInput = document.getElementById("user-input");
 
-let sessionId =
-  localStorage.getItem("bot_session") ||
-  "sess_" + Math.random().toString(36).substr(2, 9);
+let sessionId = localStorage.getItem("bot_session") || "sess_" + Math.random().toString(36).substr(2, 9);
 localStorage.setItem("bot_session", sessionId);
 
 const createMessageElement = (text, sender) => {
@@ -53,20 +51,12 @@ window.addEventListener("DOMContentLoaded", () => {
     const orderParam = urlParams.get("orderId");
     const trailingId = orderParam ? " (ID: " + orderParam.slice(-5) + ")" : "";
     setTimeout(() => {
-      appendMessage(
-        "Payment Successful! Your order" +
-          trailingId +
-          " has been validated and confirmed.",
-        "bot",
-      );
+      appendMessage("Payment Successful! Your order" + trailingId + " has been validated and confirmed.", "bot");
       window.history.replaceState({}, document.title, window.location.pathname);
     }, 500);
   } else if (urlParams.get("payment") === "failed") {
     setTimeout(() => {
-      appendMessage(
-        "Transaction Verification Failed. Please try again or contact support.",
-        "bot",
-      );
+      appendMessage("Transaction Verification Failed. Please try again or contact support.", "bot");
       window.history.replaceState({}, document.title, window.location.pathname);
     }, 500);
   }

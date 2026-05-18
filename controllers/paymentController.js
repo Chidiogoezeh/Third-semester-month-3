@@ -10,12 +10,15 @@ export const initializePayment = async (req, res) => {
     const order = await Order.findById(orderId);
     if (!order) return res.status(404).send("Order not found");
 
+    const appUrl =
+      process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+
     const response = await axios.post(
       PAYSTACK_CONFIG.initialize,
       {
         email,
         amount: order.totalAmount * 100,
-        callback_url: `${req.protocol}://${req.get("host")}/api/payment-success?orderId=${orderId}`,
+        callback_url: `${appUrl}/api/payment-success?orderId=${orderId}`,
       },
       {
         headers: { Authorization: `Bearer ${PAYSTACK_CONFIG.secret_key}` },

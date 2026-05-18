@@ -56,8 +56,7 @@ const renderTable = (items) => {
     editBtn.textContent = "Replace/Edit";
     editBtn.addEventListener("click", () => {
       document.getElementById("item-name").value = item.name;
-      document.getElementById("item-description").value =
-        item.description || "";
+      document.getElementById("item-description").value = item.description || "";
       document.getElementById("item-price").value = item.price;
       document.getElementById("item-category").value = item.category;
       editModeId = item._id;
@@ -68,18 +67,14 @@ const renderTable = (items) => {
     deleteBtn.className = "delete-btn";
     deleteBtn.textContent = "Delete";
     deleteBtn.addEventListener("click", async () => {
-      const deleteRes = await fetch(`/api/menu/${item._id}`, {
-        method: "DELETE",
-      });
+      const deleteRes = await fetch(`/api/menu/${item._id}`, { method: "DELETE" });
       if (deleteRes.ok) fetchAndRenderMenu();
     });
 
     actionTd.appendChild(editBtn);
     actionTd.appendChild(deleteBtn);
 
-    [nameTd, descTd, priceTd, catTd, actionTd].forEach((td) =>
-      tr.appendChild(td),
-    );
+    [nameTd, descTd, priceTd, catTd, actionTd].forEach((td) => tr.appendChild(td));
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
@@ -98,12 +93,7 @@ menuForm.addEventListener("submit", async (e) => {
     res = await fetch(`/api/menu/${editModeId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        description,
-        price: Number(price),
-        category,
-      }),
+      body: JSON.stringify({ name, description, price: Number(price), category }),
     });
     editModeId = null;
     document.querySelector("#menu-form button").textContent = "Add Item";
@@ -111,12 +101,7 @@ menuForm.addEventListener("submit", async (e) => {
     res = await fetch("/api/menu", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        description,
-        price: Number(price),
-        category,
-      }),
+      body: JSON.stringify({ name, description, price: Number(price), category }),
     });
   }
 
