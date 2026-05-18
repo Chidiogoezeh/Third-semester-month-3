@@ -10,8 +10,9 @@ const router = express.Router();
 router.get("/pay-trigger", initializePayment);
 router.post("/paystack-webhook", express.json(), handlePaystackWebhook);
 
+// Filter out soft-deleted items to align Admin View with live customer menu expectations
 router.get("/menu", async (req, res) => {
-  const items = await Menu.find();
+  const items = await Menu.find({ isDeleted: { $ne: true } });
   res.json(items);
 });
 

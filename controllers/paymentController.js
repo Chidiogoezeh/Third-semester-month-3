@@ -9,7 +9,7 @@ export const initializePayment = async (req, res) => {
     const order = await Order.findById(orderId);
     if (!order) return res.status(404).send("Order not found");
     if (order.paymentStatus === "paid")
-      return res.redirect("/?payment=success&orderId=" + orderId);
+      return res.redirect("/index.html?payment=success&orderId=" + orderId);
 
     const appUrl =
       process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
@@ -19,7 +19,7 @@ export const initializePayment = async (req, res) => {
       {
         email: "customer@example.com",
         amount: Math.round(order.totalAmount * 100),
-        callback_url: `${appUrl}/index.html?payment=success&orderId=${orderId}`, // Ensure explicit routing file context if static
+        callback_url: `${appUrl}/index.html?payment=success&orderId=${orderId}`,
         reference: `REF_${orderId}_${Date.now()}`,
       },
       { headers: { Authorization: `Bearer ${PAYSTACK_CONFIG.secret_key}` } },
@@ -30,7 +30,6 @@ export const initializePayment = async (req, res) => {
   }
 };
 
-// Missing Paystack Secret Token Security (Webhook Implementation)
 export const handlePaystackWebhook = async (req, res) => {
   const hash = crypto
     .createHmac("sha512", PAYSTACK_CONFIG.secret_key)
@@ -44,10 +43,8 @@ export const handlePaystackWebhook = async (req, res) => {
   const event = req.body;
   if (event.event === "charge.success") {
     const reference = event.data.reference;
-    // Extract OrderId safely from standard custom fields or reference string partitioning
     const orderId = reference.split("_")[1];
 
-    // Idempotency update guard
     await Order.findByIdAndUpdate(orderId, {
       paymentStatus: "paid",
       status: "completed",

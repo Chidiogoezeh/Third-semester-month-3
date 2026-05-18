@@ -13,10 +13,10 @@ const getMainMenu = () => {
 };
 
 export const handleBotMessage = async (sessionId, message) => {
-  let session = await Session.findOne({ deviceId: sessionId }); // keep deviceId schema matching if needed, but parameter must map right
+  let session = await Session.findOne({ deviceId: sessionId });
   if (!session) {
     session = await Session.create({
-      deviceId: sessionId, // Use the incoming payload correctly
+      deviceId: sessionId,
       currentOrder: { items: [], total: 0 },
       state: "idle",
       menuSnapshot: [],
@@ -27,10 +27,10 @@ export const handleBotMessage = async (sessionId, message) => {
   const input = message.trim();
   const isNumericInput = /^\d+$/.test(input);
 
-  // Global Cancel Hook (Always Active)
+  // Global Cancel Hook (Always Active) - Fixed Reference Bug from deviceId to sessionId
   if (isNumericInput && input === "0") {
     await Order.updateMany(
-      { sessionId: deviceId, status: "pending" },
+      { sessionId: sessionId, status: "pending" },
       { status: "cancelled" },
     );
     session.currentOrder = { items: [], total: 0 };
@@ -43,12 +43,10 @@ export const handleBotMessage = async (sessionId, message) => {
     );
   }
 
-  // State-Isolated Routing Engine
   switch (session.state) {
     case "idle":
     case "ordering":
       if (isNumericInput && input === "1") {
-        // Fetch current active items matching the session's menu expectations
         const items = await Menu.find({ isDeleted: { $ne: true } }).sort({
           category: 1,
           name: 1,
@@ -56,6 +54,7 @@ export const handleBotMessage = async (sessionId, message) => {
         if (items.length === 0) return "The menu is currently empty.";
 
         session.state = "ordering";
+        // Map snapshot string array synchronously matching ordered display positions
         session.menuSnapshot = items.map((item) => item._id.toString());
         await session.save();
 
@@ -95,14 +94,14 @@ export const handleBotMessage = async (sessionId, message) => {
             getMainMenu()
           );
         }
-        // Move strictly forward to scheduling
         session.state = "scheduling";
         await session.save();
         return `Order initialized! Total: ${formatCurrency(session.currentOrder.total)}.\n\n[Optional] Would you like to schedule this order? Enter details (e.g., '6 PM'), or type 'SKIP' to pay immediately.`;
       }
 
       if (isNumericInput && input === "98") {
-        const history = await Order.find({ sessionId: deviceId });
+        // Fixed Reference Bug from deviceId to sessionId
+        const history = await Order.find({ sessionId: sessionId });
         if (history.length === 0)
           return "No previous order history found.\n\n" + getMainMenu();
         return (
@@ -119,7 +118,6 @@ export const handleBotMessage = async (sessionId, message) => {
 
       // Handle item selection if inside ordering state
       if (session.state === "ordering" && isNumericInput) {
-        // Use the utility to confirm boundaries safely before parsing the document IDs
         if (!validateSelection(input, session.menuSnapshot.length)) {
           return "Invalid menu option selected. Please choose a valid item number or press 0 to cancel.";
         }
@@ -147,19 +145,18 @@ export const handleBotMessage = async (sessionId, message) => {
       return "Invalid selection. Please follow menu choices or select 0 to reset.";
 
     case "scheduling":
-      // Block processing options like '1' or '97' from mangling text values
       const schedulePreference =
         input.toUpperCase() === "SKIP" ? "ASAP" : input;
 
-      // Idempotent Order Creation matching current session configuration
+      // Fixed Reference Bug from deviceId to sessionId
       let openOrder = await Order.findOne({
-        sessionId: deviceId,
+        sessionId: sessionId,
         status: "pending",
         paymentStatus: "unpaid",
       });
       if (!openOrder) {
         openOrder = await Order.create({
-          sessionId: deviceId,
+          sessionId: sessionId,
           items: session.currentOrder.items,
           totalAmount: session.currentOrder.total,
           scheduledFor: schedulePreference,
@@ -169,15 +166,16 @@ export const handleBotMessage = async (sessionId, message) => {
         await openOrder.save();
       }
 
-      session.currentOrder = { items: [], total: 0 }; // Clear context safe state
+      session.currentOrder = { items: [], total: 0 };
       session.state = "awaiting_payment";
       await session.save();
       return `Schedule Preference Set to: ${schedulePreference}.\n\nType 'PAY' to proceed to your secure Paystack payment page or 0 to cancel.`;
 
     case "awaiting_payment":
       if (input.toUpperCase() === "PAY") {
+        // Fixed Reference Bug from deviceId to sessionId
         const pendingOrder = await Order.findOne({
-          sessionId: deviceId,
+          sessionId: sessionId,
           status: "pending",
         }).sort({ createdAt: -1 });
         if (!pendingOrder)
