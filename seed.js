@@ -1,12 +1,10 @@
-// seed.js
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import Menu from "./models/Menu.js";
-import connectDB from "./config/db.js";
 
 dotenv.config();
 
-const menuItems = [
+const initialMenu = [
   {
     name: "Jollof Rice",
     category: "Rice Dishes",
@@ -183,12 +181,23 @@ const menuItems = [
   },
 ];
 
-const seed = async () => {
-  await connectDB();
-  await Menu.deleteMany();
-  await Menu.insertMany(menuItems);
-  console.log("Database seeded successfully!");
-  process.exit();
+const seedDatabase = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("Seed engine linked to MongoDB successfully...");
+
+    // Clean slate configuration
+    await Menu.deleteMany({});
+    console.log("Stale menu definitions dropped.");
+
+    await Menu.insertMany(initialMenu);
+    console.log("Standard core dishes seeded successfully into the database.");
+
+    process.exit(0);
+  } catch (error) {
+    console.error("Seeding operation encountered an error:", error);
+    process.exit(1);
+  }
 };
 
-seed();
+seedDatabase();

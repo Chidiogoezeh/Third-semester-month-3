@@ -1,11 +1,11 @@
-export const socket = io();
+export const socket = window.io ? window.io() : null;
 
 export const sendMessage = (event, data) => {
-  socket.emit(event, data);
+  if (socket) socket.emit(event, data);
 };
 
 export const onMessage = (event, callback) => {
-  socket.on(event, callback);
+  if (socket) socket.on(event, callback);
 };
 
 export default socket;

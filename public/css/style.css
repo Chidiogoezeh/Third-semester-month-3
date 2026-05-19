@@ -224,3 +224,7 @@ tr:hover {
     gap: 8px;
     font-size: 14px;
 }
+
+.hidden-element {
+    display: none !important;
+}

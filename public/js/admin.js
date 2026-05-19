@@ -18,52 +18,64 @@ let isMutating = false;
 let ADMIN_TOKEN = sessionStorage.getItem("admin_key");
 if (!ADMIN_TOKEN) {
   ADMIN_TOKEN = prompt("Enter Admin Access Token:");
-  if (ADMIN_TOKEN) {
-    sessionStorage.setItem("admin_key", ADMIN_TOKEN);
-  }
+  if (ADMIN_TOKEN) sessionStorage.setItem("admin_key", ADMIN_TOKEN);
 }
 
 const getAuthHeaders = () => ({
   "Content-Type": "application/json",
-  Authorization: `Bearer ${ADMIN_TOKEN}`,
+  "x-admin-secret": ADMIN_TOKEN,
 });
+
+const clearElementNode = (element) => {
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+};
+
+const createTableCell = (text) => {
+  const td = document.createElement("td");
+  td.textContent = text;
+  return td;
+};
 
 const fetchAndRenderCategories = async () => {
   try {
-    const res = await fetch("/api/categories", { headers: getAuthHeaders() });
+    const res = await fetch("/api/menu");
     if (!res.ok) throw new Error("Unauthorized or server error");
-    const categories = await res.json();
+    const items = await res.json();
 
-    categoryList.innerHTML = "";
-    itemCategorySelect.innerHTML = "";
+    const distinctCategories = [...new Set(items.map((item) => item.category))];
 
-    categories.forEach((cat) => {
+    clearElementNode(categoryList);
+    clearElementNode(itemCategorySelect);
+
+    distinctCategories.forEach((catName) => {
       const option = document.createElement("option");
-      option.value = cat.name;
-      option.textContent = cat.name;
+      option.value = catName;
+      option.textContent = catName;
       itemCategorySelect.appendChild(option);
 
       const chip = document.createElement("div");
       chip.className = "category-chip";
 
       const textSpan = document.createElement("span");
-      textSpan.textContent = cat.name;
+      textSpan.textContent = catName;
 
       const delBtn = document.createElement("button");
       delBtn.className = "delete-btn";
       delBtn.textContent = "×";
       delBtn.type = "button";
       delBtn.addEventListener("click", async () => {
-        if (!confirm(`Delete category "${cat.name}"?`)) return;
+        if (!confirm(`To delete category "${catName}", all underlying items will be deleted. Proceed?`)) return;
         isMutating = true;
-        const delRes = await fetch(`/api/categories/${cat._id}`, {
-          method: "DELETE",
-          headers: getAuthHeaders(),
-        });
-        if (delRes.ok) {
-          await fetchAndRenderCategories();
-          await fetchAndRenderMenu();
+        
+        const matchingItems = items.filter(i => i.category === catName);
+        for (const item of matchingItems) {
+          await fetch(`/api/menu/${item._id}`, { method: "DELETE", headers: getAuthHeaders() });
         }
+        
+        await fetchAndRenderCategories();
+        await fetchAndRenderMenu();
         isMutating = false;
       });
 
@@ -72,7 +84,7 @@ const fetchAndRenderCategories = async () => {
       categoryList.appendChild(chip);
     });
   } catch (err) {
-    console.error("Failed fetching categories:", err);
+    console.error("Failed fetching structural category snapshots:", err);
   }
 };
 
@@ -82,32 +94,19 @@ const fetchAndRenderMenu = async () => {
     if (!res.ok) return;
     const items = await res.json();
 
-    menuList.innerHTML = "";
+    clearElementNode(menuList);
 
     if (!items || items.length === 0) {
-      menuTable.style.display = "none";
-      menuEmptyMsg.style.display = "block";
+      menuTable.classList.add("hidden-element");
+      menuEmptyMsg.classList.remove("hidden-element");
       return;
     }
 
-    menuEmptyMsg.style.display = "none";
-    menuTable.style.display = "table";
+    menuEmptyMsg.classList.add("hidden-element");
+    menuTable.classList.remove("hidden-element");
 
     items.forEach((item) => {
       const tr = document.createElement("tr");
-
-      const nameTd = document.createElement("td");
-      nameTd.textContent = item.name;
-
-      const descTd = document.createElement("td");
-      descTd.textContent = item.description || "";
-
-      const priceTd = document.createElement("td");
-      priceTd.textContent = `₦${item.price}`;
-
-      const catTd = document.createElement("td");
-      catTd.textContent = item.category;
-
       const actionTd = document.createElement("td");
 
       const editBtn = document.createElement("button");
@@ -116,8 +115,7 @@ const fetchAndRenderMenu = async () => {
       editBtn.type = "button";
       editBtn.addEventListener("click", () => {
         document.getElementById("item-name").value = item.name;
-        document.getElementById("item-description").value =
-          item.description || "";
+        document.getElementById("item-description").value = item.description || "";
         document.getElementById("item-price").value = item.price;
         document.getElementById("item-category").value = item.category;
         editModeId = item._id;
@@ -135,90 +133,82 @@ const fetchAndRenderMenu = async () => {
           method: "DELETE",
           headers: getAuthHeaders(),
         });
-        if (deleteRes.ok) await fetchAndRenderMenu();
+        if (deleteRes.ok) {
+          await fetchAndRenderMenu();
+          await fetchAndRenderCategories();
+        }
         isMutating = false;
       });
 
       actionTd.appendChild(editBtn);
       actionTd.appendChild(deleteBtn);
 
-      tr.appendChild(nameTd);
-      tr.appendChild(descTd);
-      tr.appendChild(priceTd);
-      tr.appendChild(catTd);
+      tr.appendChild(createTableCell(item.name));
+      tr.appendChild(createTableCell(item.description || ""));
+      tr.appendChild(createTableCell(`₦${item.price}`));
+      tr.appendChild(createTableCell(item.category));
       tr.appendChild(actionTd);
       menuList.appendChild(tr);
     });
   } catch (err) {
-    console.error("Failed fetching menu:", err);
+    console.error("Failed fetching menu items:", err);
   }
 };
 
 const fetchAndRenderOrders = async () => {
-  if (isMutating) return; // Halt interval rendering during layout modification calls
+  if (isMutating) return;
   try {
-    const res = await fetch(`/api/orders`, { headers: getAuthHeaders() });
+    const res = await fetch("/api/orders", { headers: getAuthHeaders() });
     if (!res.ok) return;
     const orders = await res.json();
 
-    ordersList.innerHTML = "";
+    clearElementNode(ordersList);
 
     if (!orders || orders.length === 0) {
-      ordersTable.style.display = "none";
-      ordersEmptyMsg.style.display = "block";
+      ordersTable.classList.add("hidden-element");
+      ordersEmptyMsg.classList.remove("hidden-element");
       return;
     }
 
-    ordersEmptyMsg.style.display = "none";
-    ordersTable.style.display = "table";
+    ordersEmptyMsg.classList.add("hidden-element");
+    ordersTable.classList.remove("hidden-element");
 
     orders.forEach((order) => {
       const tr = document.createElement("tr");
-
-      const idTd = document.createElement("td");
-      idTd.textContent = `...${order._id.slice(-6)}`;
-
-      const itemsTd = document.createElement("td");
-      itemsTd.textContent = order.items
-        .map((i) => `${i.name} (x${i.quantity})`)
-        .join(", ");
-
-      const totalTd = document.createElement("td");
-      totalTd.textContent = `₦${order.totalAmount}`;
-
       const statusTd = document.createElement("td");
+      
       statusTd.textContent = order.status;
       statusTd.className = `status-${order.status.toLowerCase().replace(/\s+/g, "-")}`;
 
-      tr.appendChild(idTd);
-      tr.appendChild(itemsTd);
-      tr.appendChild(totalTd);
+      const itemDetailsString = order.items
+        .map((i) => `${i.name} (x${i.quantity})`)
+        .join(", ");
+
+      tr.appendChild(createTableCell(`...${order._id.slice(-6)}`));
+      tr.appendChild(createTableCell(itemDetailsString));
+      tr.appendChild(createTableCell(`₦${order.totalAmount}`));
       tr.appendChild(statusTd);
       ordersList.appendChild(tr);
     });
   } catch (err) {
-    console.error("Failed pulling orders update stream:", err);
+    console.error("Failed pulling order streams:", err);
   }
 };
 
 categoryForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const nameInput = document.getElementById("category-name");
-  const name = nameInput.value.trim();
-  if (!name) return;
+  const catValue = nameInput.value.trim();
+  if (!catValue) return;
 
-  isMutating = true;
-  const res = await fetch("/api/categories", {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ name }),
-  });
+  const placeholderOption = document.createElement("option");
+  placeholderOption.value = catValue;
+  placeholderOption.textContent = catValue;
+  itemCategorySelect.appendChild(placeholderOption);
+  itemCategorySelect.value = catValue;
 
-  if (res.ok) {
-    nameInput.value = "";
-    await fetchAndRenderCategories();
-  }
-  isMutating = false;
+  nameInput.value = "";
+  alert(`Category dynamic wrapper context created. Assign items to finalize structural mapping.`);
 });
 
 menuForm.addEventListener("submit", async (e) => {
@@ -253,13 +243,13 @@ menuForm.addEventListener("submit", async (e) => {
   if (res.ok) {
     menuForm.reset();
     await fetchAndRenderMenu();
+    await fetchAndRenderCategories();
   }
   isMutating = false;
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  fetchAndRenderCategories();
-  fetchAndRenderMenu();
+  fetchAndRenderMenu().then(() => fetchAndRenderCategories());
   fetchAndRenderOrders();
   setInterval(fetchAndRenderOrders, 10000);
 });
