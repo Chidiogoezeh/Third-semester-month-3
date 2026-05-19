@@ -5,17 +5,13 @@ const OrderSchema = new mongoose.Schema(
     sessionId: { type: String, required: true, index: true },
     items: [
       {
-        menuId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Menu",
-          required: true,
-        },
+        menuId: { type: mongoose.Schema.Types.ObjectId, ref: "Menu", required: true },
         name: { type: String, required: true },
-        price: { type: Number, required: true }, // Snapshotted price at checkout execution
+        price: { type: Number, required: true },
         quantity: { type: Number, required: true, min: 1 },
       },
     ],
-    totalAmount: { type: Number, required: true, min: 0 }, // Stored absolute calculation
+    totalAmount: { type: Number, required: true, min: 0 },
     status: {
       type: String,
       enum: ["Pending Payment", "Order Placed", "Cancelled"],
@@ -24,7 +20,7 @@ const OrderSchema = new mongoose.Schema(
     },
     idempotencyToken: { type: String, unique: true, required: true },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 export default mongoose.model("Order", OrderSchema);

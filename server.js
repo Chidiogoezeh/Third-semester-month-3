@@ -10,13 +10,9 @@ import botRoutes from "./routes/bot.js";
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
+  cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
-// Primary Database Initialization Hook
 connectDB();
 
 app.use(express.json());
@@ -35,16 +31,10 @@ io.on("connection", (socket) => {
       const session = await Session.findOne({ deviceId: sessionId });
       if (session && session.state !== "idle") {
         let recoveryGreeting = "Welcome back! ";
-        if (
-          ["awaiting_category", "awaiting_item", "awaiting_quantity"].includes(
-            session.state,
-          )
-        ) {
-          recoveryGreeting +=
-            "You have an active ordering session open. Send 97 to view your basket or select 0 to reset.";
+        if (["awaiting_category", "awaiting_item", "awaiting_quantity"].includes(session.state)) {
+          recoveryGreeting += "You have an active ordering session open. Send 97 to view your basket or select 0 to reset.";
         } else if (session.state === "awaiting_payment") {
-          recoveryGreeting +=
-            "Your checkout order is waiting for confirmation. Please complete payment using the link provided, or enter 9 to access the main menu.";
+          recoveryGreeting += "Your checkout order is waiting for confirmation. Please complete payment using the link provided, or enter 9 to access the main menu.";
         } else {
           recoveryGreeting += "\n\n" + getMainMenu();
         }
@@ -53,9 +43,7 @@ io.on("connection", (socket) => {
         socket.emit("bot-response", { text: getMainMenu() });
       }
     } catch (err) {
-      socket.emit("bot-response", {
-        text: "System connection dropped. Send 0 to refresh state loops manually.",
-      });
+      socket.emit("bot-response", { text: "System connection dropped. Send 0 to refresh state loops manually." });
     }
   });
 
@@ -67,6 +55,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () =>
-  console.log(`Server running safely on port ${PORT}`),
-);
+httpServer.listen(PORT, () => console.log(`Server running safely on port ${PORT}`));

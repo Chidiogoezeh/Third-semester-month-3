@@ -1,9 +1,6 @@
 import express from "express";
 import mongoose from "mongoose";
-import {
-  initializePayment,
-  handlePaystackWebhook,
-} from "../controllers/paymentController.js";
+import { initializePayment, handlePaystackWebhook } from "../controllers/paymentController.js";
 import Menu from "../models/Menu.js";
 import Order from "../models/Order.js";
 import { PAYSTACK_CONFIG } from "../config/paystack.js";
@@ -15,14 +12,11 @@ const adminSecureGate = (req, res, next) => {
   if (providedToken && providedToken === PAYSTACK_CONFIG.admin_secret) {
     return next();
   }
-  return res
-    .status(403)
-    .json({ error: "Access Denied: Invalid Administrative Token Payload" });
+  return res.status(403).json({ error: "Access Denied: Invalid Administrative Token Payload" });
 };
 
 router.get("/pay-trigger", initializePayment);
 
-// Robust capture streaming raw strings avoiding body-parser pipeline lockups
 router.post(
   "/paystack-webhook",
   express.raw({ type: "application/json" }),
@@ -35,7 +29,7 @@ router.post(
     }
     next();
   },
-  handlePaystackWebhook,
+  handlePaystackWebhook
 );
 
 router.get("/menu", async (req, res) => {
@@ -49,17 +43,13 @@ router.post("/menu", adminSecureGate, async (req, res) => {
 });
 
 router.put("/menu/:id", adminSecureGate, async (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.id))
-    return res.status(400).json({ error: "Invalid ID format" });
-  const updatedItem = await Menu.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-  });
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: "Invalid ID format" });
+  const updatedItem = await Menu.findByIdAndUpdate(req.params.id, req.body, { new: true });
   res.json(updatedItem);
 });
 
 router.delete("/menu/:id", adminSecureGate, async (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.id))
-    return res.status(400).json({ error: "Invalid ID format" });
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: "Invalid ID format" });
   await Menu.findByIdAndUpdate(req.params.id, { isDeleted: true });
   res.json({ success: true });
 });

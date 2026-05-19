@@ -17,25 +17,15 @@ const SessionSchema = new mongoose.Schema(
     },
     state: {
       type: String,
-      enum: [
-        "idle",
-        "awaiting_category",
-        "awaiting_item",
-        "awaiting_quantity",
-        "awaiting_payment",
-      ],
+      enum: ["idle", "awaiting_category", "awaiting_item", "awaiting_quantity", "awaiting_payment"],
       default: "idle",
     },
     selectedCategory: { type: String, default: "" },
     selectedItemId: { type: String, default: "" },
     menuSnapshot: [{ type: String }],
-    activeOrderLockId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Order",
-      default: null,
-    },
+    activeOrderLockId: { type: mongoose.Schema.Types.ObjectId, ref: "Order", default: null },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 export default mongoose.model("Session", SessionSchema);

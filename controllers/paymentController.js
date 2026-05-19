@@ -1,5 +1,6 @@
 import axios from "axios";
 import crypto from "crypto";
+import mongoose from "mongoose";
 import { PAYSTACK_CONFIG } from "../config/paystack.js";
 import Order from "../models/Order.js";
 import Session from "../models/Session.js";
@@ -14,19 +15,14 @@ export const initializePayment = async (req, res) => {
 
   try {
     const order = await Order.findById(orderId);
-    if (!order)
-      return res.status(404).send("Order details could not be found.");
+    if (!order) return res.status(404).send("Order details could not be found.");
 
     if (order.status === "Order Placed") {
       return res.redirect(`/index.html?payment=success&orderId=${orderId}`);
     }
 
-    const appUrl =
-      process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
-    const cleanSessionString = String(sess || "anonymous_device").replace(
-      /[^a-zA-Z0-9_\-]/g,
-      "",
-    );
+    const appUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+    const cleanSessionString = String(sess || "anonymous_device").replace(/[^a-zA-Z0-9_\-]/g, "");
     const transactionEmail = `${cleanSessionString}@naijabite.bot`;
 
     const response = await axios.post(
@@ -37,16 +33,12 @@ export const initializePayment = async (req, res) => {
         callback_url: `${appUrl}/index.html?payment=success&orderId=${orderId}&sess=${cleanSessionString}`,
         reference: `REF_${orderId}_${Date.now()}`,
       },
-      { headers: { Authorization: `Bearer ${PAYSTACK_CONFIG.secret_key}` } },
+      { headers: { Authorization: `Bearer ${PAYSTACK_CONFIG.secret_key}` } }
     );
     res.redirect(response.data.data.authorization_url);
   } catch (error) {
     console.error("Payment Gateway handoff error details:", error.message);
-    res
-      .status(500)
-      .send(
-        "Failed to securely transition into Paystack Portal. Please retry.",
-      );
+    res.status(500).send("Failed to securely transition into Paystack Portal. Please retry.");
   }
 };
 
@@ -58,9 +50,7 @@ export const handlePaystackWebhook = async (req, res) => {
       .digest("hex");
 
     if (hash !== req.headers["x-paystack-signature"]) {
-      return res
-        .status(401)
-        .send("Unauthorized Event Origin Validation Failed");
+      return res.status(401).send("Unauthorized Event Origin Validation Failed");
     }
 
     const event = req.body;
@@ -70,20 +60,15 @@ export const handlePaystackWebhook = async (req, res) => {
 
       if (!orderId) return res.sendStatus(200);
 
-      // Mutate order state tracking inside atomic conditional check
       const confirmedOrder = await Order.findOneAndUpdate(
         { _id: orderId, status: "Pending Payment" },
         { $set: { status: "Order Placed" } },
-        { new: true },
+        { new: true }
       );
 
       if (confirmedOrder) {
-        // Target specifically the session checking out that exact order ID
         await Session.findOneAndUpdate(
-          {
-            deviceId: confirmedOrder.sessionId,
-            activeOrderLockId: confirmedOrder._id,
-          },
+          { deviceId: confirmedOrder.sessionId, activeOrderLockId: confirmedOrder._id },
           {
             $set: {
               state: "idle",
@@ -91,7 +76,7 @@ export const handlePaystackWebhook = async (req, res) => {
               menuSnapshot: [],
               activeOrderLockId: null,
             },
-          },
+          }
         );
       }
     }
