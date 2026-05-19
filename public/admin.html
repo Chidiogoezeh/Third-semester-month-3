@@ -27,20 +27,43 @@
                 <input type="text" id="item-name" placeholder="Item Name" required>
                 <input type="text" id="item-description" placeholder="Description (e.g. Smoky tomato rice)" required>
                 <input type="number" id="item-price" placeholder="Price (₦)" min="1" required>
-                <select id="item-category" required>
-                    <!-- Dynamically filled by script -->
-                </select>
+                <select id="item-category" required></select>
                 <button type="submit" id="submit-item-btn">Add Item</button>
             </form>
         </section>
         
-        <section id="menu-list"></section>
+        <section id="menu-display-wrapper">
+            <table id="menu-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Price</th>
+                        <th>Category</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="menu-list"></tbody>
+            </table>
+            <div id="menu-empty-msg">No items available in the menu.</div>
+        </section>
         
         <hr class="section-divider">
         
         <section id="orders-dashboard-section">
             <h3>Live Active Orders</h3>
-            <div id="orders-list"></div>
+            <table id="orders-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Items</th>
+                        <th>Total Paid</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-list"></tbody>
+            </table>
+            <div id="orders-empty-msg">No orders registered yet.</div>
         </section>
     </main>
     <script type="module" src="js/admin.js"></script>
