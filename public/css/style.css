@@ -2,6 +2,11 @@
     --primary: #e67e22;
     --bg: #f4f7f6;
     --white: #ffffff;
+    --success: #27ae60;
+    --error: #e74c3c;
+    --edit: #3498db;
+    --gray-light: #eee;
+    --gray-border: #ddd;
 }
 
 body {
@@ -51,7 +56,7 @@ header {
 }
 
 .bot-msg {
-    background: #eee;
+    background: var(--gray-light);
     align-self: flex-start;
 }
 
@@ -61,39 +66,47 @@ header {
     align-self: flex-end;
 }
 
-#input-area {
+/* Fix applied here to target both id and structural class configurations */
+#input-area, .input-area {
     display: flex;
     padding: 15px;
-    border-top: 1px solid #ddd;
+    border-top: 1px solid var(--gray-border);
+    background: var(--white);
 }
 
-input {
+input, select {
     flex: 1;
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--gray-border);
     border-radius: 4px;
     outline: none;
+    box-sizing: border-box;
 }
 
 button {
     background: var(--primary);
     color: white;
     border: none;
-    padding: 0 20px;
+    padding: 10px 20px;
     margin-left: 10px;
     border-radius: 4px;
     cursor: pointer;
 }
 
+button:hover {
+    opacity: 0.9;
+}
+
 .payment-action-button {
     display: inline-block;
-    background: #27ae60;
+    background: var(--success);
     color: white;
     padding: 10px 15px;
     text-decoration: none;
     border-radius: 6px;
     margin-top: 5px;
     font-weight: bold;
+    text-align: center;
 }
 
 .success-payment-wrapper {
@@ -103,11 +116,11 @@ button {
 }
 
 .success-payment-wrapper h1 {
-    color: #27ae60;
+    color: var(--success);
 }
 
 .edit-btn {
-    background-color: #3498db;
+    background-color: var(--edit);
     color: white;
     border: none;
     padding: 5px 10px;
@@ -142,7 +155,7 @@ table {
 th, td {
     padding: 12px 15px;
     text-align: left;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--gray-border);
 }
 
 th {
@@ -156,7 +169,7 @@ tr:hover {
 }
 
 .delete-btn {
-    background-color: #e74c3c;
+    background-color: var(--error);
     color: white;
     border: none;
     padding: 5px 10px;
@@ -170,4 +183,44 @@ tr:hover {
 
 .edit-btn:hover {
     background-color: #2980b9;
+}
+
+.section-divider {
+    border: 0;
+    border-top: 1px solid var(--gray-border);
+    margin: 20px 0;
+}
+
+.status-pending-payment {
+    color: #f39c12;
+    font-weight: bold;
+}
+
+.status-order-placed {
+    color: var(--success);
+    font-weight: bold;
+}
+
+.admin-form-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.category-tag-list {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.category-chip {
+    background: #e2e8f0;
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
 }

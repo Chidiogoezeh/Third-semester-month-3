@@ -1,20 +1,84 @@
 const menuForm = document.getElementById("menu-form");
 const menuList = document.getElementById("menu-list");
+const categoryForm = document.getElementById("category-form");
+const categoryList = document.getElementById("category-list");
+const itemCategorySelect = document.getElementById("item-category");
+const submitItemBtn = document.getElementById("submit-item-btn");
+const ordersList = document.getElementById("orders-list");
+
 let editModeId = null;
 
-// Fallback matching administrative secret configuration token
-const ADMIN_TOKEN = "SuperSecretAdminKey123";
+// Secure token collection from Session Storage rather than hardcoded scripts
+let ADMIN_TOKEN = sessionStorage.getItem("admin_key");
+if (!ADMIN_TOKEN) {
+  ADMIN_TOKEN = prompt("Enter Admin Access Token:") || "SuperSecretAdminKey123";
+  sessionStorage.setItem("admin_key", ADMIN_TOKEN);
+}
+
+const clearContainer = (container) => {
+  while (container.firstChild) {
+    container.removeChild(container.firstChild);
+  }
+};
+
+const fetchAndRenderCategories = async () => {
+  const res = await fetch("/api/categories", {
+    headers: { "x-admin-secret": ADMIN_TOKEN },
+  });
+  if (!res.ok) return;
+  const categories = await res.json();
+
+  clearContainer(categoryList);
+  clearContainer(itemCategorySelect);
+
+  categories.forEach((cat) => {
+    // Populate form dropdown select dynamically
+    const option = document.createElement("option");
+    option.value = cat.name;
+    option.textContent = cat.name;
+    itemCategorySelect.appendChild(option);
+
+    // Build functional category chips management dashboard
+    const chip = document.createElement("div");
+    chip.className = "category-chip";
+
+    const textSpan = document.createElement("span");
+    textSpan.textContent = cat.name;
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "delete-btn";
+    delBtn.textContent = "×";
+    delBtn.addEventListener("click", async () => {
+      const confirmDelete = confirm(
+        `Delete category "${cat.name}"? This could orphan nested items.`,
+      );
+      if (!confirmDelete) return;
+
+      const delRes = await fetch(`/api/categories/${cat._id}`, {
+        method: "DELETE",
+        headers: { "x-admin-secret": ADMIN_TOKEN },
+      });
+      if (delRes.ok) {
+        fetchAndRenderCategories();
+        fetchAndRenderMenu();
+      }
+    });
+
+    chip.appendChild(textSpan);
+    chip.appendChild(delBtn);
+    categoryList.appendChild(chip);
+  });
+};
 
 const fetchAndRenderMenu = async () => {
   const res = await fetch("/api/menu");
+  if (!res.ok) return;
   const items = await res.json();
   renderTable(items);
 };
 
 const renderTable = (items) => {
-  while (menuList.firstChild) {
-    menuList.removeChild(menuList.firstChild);
-  }
+  clearContainer(menuList);
 
   if (!items || items.length === 0) {
     const p = document.createElement("p");
@@ -56,7 +120,7 @@ const renderTable = (items) => {
 
     const editBtn = document.createElement("button");
     editBtn.className = "edit-btn";
-    editBtn.textContent = "Replace/Edit";
+    editBtn.textContent = "Edit";
     editBtn.addEventListener("click", () => {
       document.getElementById("item-name").value = item.name;
       document.getElementById("item-description").value =
@@ -64,7 +128,7 @@ const renderTable = (items) => {
       document.getElementById("item-price").value = item.price;
       document.getElementById("item-category").value = item.category;
       editModeId = item._id;
-      document.querySelector("#menu-form button").textContent = "Update Item";
+      submitItemBtn.textContent = "Update Item";
     });
 
     const deleteBtn = document.createElement("button");
@@ -90,6 +154,27 @@ const renderTable = (items) => {
   menuList.appendChild(table);
 };
 
+categoryForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const nameInput = document.getElementById("category-name");
+  const name = nameInput.value.trim();
+  if (!name) return;
+
+  const res = await fetch("/api/categories", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-secret": ADMIN_TOKEN,
+    },
+    body: JSON.stringify({ name }),
+  });
+
+  if (res.ok) {
+    nameInput.value = "";
+    fetchAndRenderCategories();
+  }
+});
+
 menuForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const name = document.getElementById("item-name").value.trim();
@@ -112,7 +197,7 @@ menuForm.addEventListener("submit", async (e) => {
       body: JSON.stringify(payload),
     });
     editModeId = null;
-    document.querySelector("#menu-form button").textContent = "Add Item";
+    submitItemBtn.textContent = "Add Item";
   } else {
     res = await fetch("/api/menu", {
       method: "POST",
@@ -130,59 +215,62 @@ menuForm.addEventListener("submit", async (e) => {
   }
 });
 
-document.addEventListener("DOMContentLoaded", fetchAndRenderMenu);
-
-// Append directly inside public/js/admin.js
-const ordersList = document.getElementById("orders-list");
-
 const fetchAndRenderOrders = async () => {
   const res = await fetch(`/api/orders?admin_key=${ADMIN_TOKEN}`);
   if (!res.ok) return;
   const orders = await res.json();
 
-  while (ordersList.firstChild) {
-    ordersList.removeChild(ordersList.firstChild);
-  }
+  clearContainer(ordersList);
 
   if (orders.length === 0) {
-    ordersList.innerHTML = "<p>No orders registered yet.</p>";
+    const noOrdersMsg = document.createElement("p");
+    noOrdersMsg.textContent = "No orders registered yet.";
+    ordersList.appendChild(noOrdersMsg);
     return;
   }
 
   const table = document.createElement("table");
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>Order ID</th>
-        <th>Items</th>
-        <th>Total Paid</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  `;
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
 
-  const tbody = table.querySelector("tbody");
+  ["Order ID", "Items", "Total Paid", "Status"].forEach((text) => {
+    const th = document.createElement("th");
+    th.textContent = text;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
   orders.forEach((order) => {
     const tr = document.createElement("tr");
-    const itemsSummary = order.items
+
+    const idTd = document.createElement("td");
+    idTd.textContent = `...${order._id.slice(-6)}`;
+
+    const itemsTd = document.createElement("td");
+    itemsTd.textContent = order.items
       .map((i) => `${i.name} (x${i.quantity})`)
       .join(", ");
 
-    tr.innerHTML = `
-      <td>...${order._id.slice(-6)}</td>
-      <td>${itemsSummary}</td>
-      <td>₦${order.totalAmount}</td>
-      <td class="status-${order.status.toLowerCase().replace(" ", "-")}">${order.status}</td>
-    `;
+    const totalTd = document.createElement("td");
+    totalTd.textContent = `₦${order.totalAmount}`;
+
+    const statusTd = document.createElement("td");
+    statusTd.textContent = order.status;
+    statusTd.className = `status-${order.status.toLowerCase().replace(/\s+/g, "-")}`;
+
+    [idTd, itemsTd, totalTd, statusTd].forEach((td) => tr.appendChild(td));
     tbody.appendChild(tr);
   });
+
+  table.appendChild(tbody);
   ordersList.appendChild(table);
 };
 
-// Call along with initialize routines
 document.addEventListener("DOMContentLoaded", () => {
+  fetchAndRenderCategories();
   fetchAndRenderMenu();
   fetchAndRenderOrders();
-  setInterval(fetchAndRenderOrders, 10000); // Polling mechanism every 10s
+  setInterval(fetchAndRenderOrders, 10000);
 });

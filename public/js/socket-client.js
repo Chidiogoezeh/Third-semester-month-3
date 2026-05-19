@@ -1,4 +1,4 @@
-const socket = io();
+export const socket = io();
 
 export const sendMessage = (event, data) => {
   socket.emit(event, data);
