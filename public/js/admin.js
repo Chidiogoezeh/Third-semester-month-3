@@ -131,3 +131,58 @@ menuForm.addEventListener("submit", async (e) => {
 });
 
 document.addEventListener("DOMContentLoaded", fetchAndRenderMenu);
+
+// Append directly inside public/js/admin.js
+const ordersList = document.getElementById("orders-list");
+
+const fetchAndRenderOrders = async () => {
+  const res = await fetch(`/api/orders?admin_key=${ADMIN_TOKEN}`);
+  if (!res.ok) return;
+  const orders = await res.json();
+
+  while (ordersList.firstChild) {
+    ordersList.removeChild(ordersList.firstChild);
+  }
+
+  if (orders.length === 0) {
+    ordersList.innerHTML = "<p>No orders registered yet.</p>";
+    return;
+  }
+
+  const table = document.createElement("table");
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Order ID</th>
+        <th>Items</th>
+        <th>Total Paid</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+
+  const tbody = table.querySelector("tbody");
+  orders.forEach((order) => {
+    const tr = document.createElement("tr");
+    const itemsSummary = order.items
+      .map((i) => `${i.name} (x${i.quantity})`)
+      .join(", ");
+
+    tr.innerHTML = `
+      <td>...${order._id.slice(-6)}</td>
+      <td>${itemsSummary}</td>
+      <td>₦${order.totalAmount}</td>
+      <td class="status-${order.status.toLowerCase().replace(" ", "-")}">${order.status}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  ordersList.appendChild(table);
+};
+
+// Call along with initialize routines
+document.addEventListener("DOMContentLoaded", () => {
+  fetchAndRenderMenu();
+  fetchAndRenderOrders();
+  setInterval(fetchAndRenderOrders, 10000); // Polling mechanism every 10s
+});

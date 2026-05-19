@@ -1,15 +1,33 @@
 import Menu from "../models/Menu.js";
 import Session from "../models/Session.js";
 import Order from "../models/Order.js";
-import { formatCurrency, validateSelection } from "../utils/helpers.js";
+import { formatCurrency } from "../utils/helpers.js";
 
 const getMainMenu = () => {
-  return `Welcome to Naija Bite! Select options below:
-1. Select 1 to Place an order
-99. Select 99 to checkout order
-98. Select 98 to see order history
-97. Select 97 to see current order
-0. Select 0 to cancel order`;
+  return `Main Menu:
+• Select 1 to Place an order (View Categories)
+• Select 97 to See current order (Cart)
+• Select 99 to Checkout and Pay
+• Select 98 to See order history
+• Select 0 to Clear/Cancel current order`;
+};
+
+const getCategoryMenu = () => {
+  return `Select a category:
+• Select 11 for Rice Dishes
+• Select 12 for Swallow & Soups
+• Select 13 for Beans and Tubers
+• Select 14 for Snacks and Protein
+• Select 15 for Drinks
+• Select 9 to Go Back to Main Menu`;
+};
+
+const CATEGORY_MAP = {
+  11: "Rice Dishes",
+  12: "Swallow & Soups",
+  13: "Beans and Tubers",
+  14: "Snacks and Protein",
+  15: "Drinks",
 };
 
 export const handleBotMessage = async (sessionId, message) => {
@@ -19,193 +37,199 @@ export const handleBotMessage = async (sessionId, message) => {
       deviceId: sessionId,
       currentOrder: { items: [], total: 0 },
       state: "idle",
-      menuSnapshot: [],
     });
   }
 
   const input = message.trim();
-  const isNumericInput = /^\d+$/.test(input);
 
-  // Loose Cancel Hook Fix: Only clear active orders attached to this current session workflow
-  if (isNumericInput && parseInt(input, 10) === 0) {
-    await Order.updateMany(
-      { sessionId: sessionId, status: "pending" },
-      { status: "cancelled" },
-    );
+  // Rule 0: Global Cancel/Clear Hook
+  if (input === "0") {
+    if (!session.currentOrder || session.currentOrder.items.length === 0) {
+      session.state = "idle";
+      await session.save();
+      return "Your cart is already empty.\n\n" + getMainMenu();
+    }
     session.currentOrder = { items: [], total: 0 };
     session.state = "idle";
-    session.menuSnapshot = [];
     await session.save();
-    return (
-      "Current actions reset, basket cleared, and pending orders cancelled.\n\n" +
-      getMainMenu()
-    );
+    return "Your order has been cleared.\n\n" + getMainMenu();
   }
 
-  // Handle distinct explicit operational targets before processing variable selections
-  if (isNumericInput) {
-    const numericValue = parseInt(input, 10);
-
-    if (
-      numericValue === 1 &&
-      (session.state === "idle" || session.state === "ordering")
-    ) {
-      const items = await Menu.find({ isDeleted: { $ne: true } }).sort({
-        category: 1,
-        name: 1,
-      });
-      if (items.length === 0) return "The menu is currently empty.";
-
-      session.state = "ordering";
-      session.menuSnapshot = items.map((item) => item._id.toString());
-      await session.save();
-
-      let menuList = "Our Menu:\n\n";
-      const categories = [...new Set(items.map((item) => item.category))];
-      let overallIndex = 1;
-
-      categories.forEach((category) => {
-        menuList += `--- Category: ${category} ---\n`;
-        items.forEach((item) => {
-          if (item.category === category) {
-            menuList += `${overallIndex}. ${item.name} - ${formatCurrency(item.price)}\n`;
-            overallIndex++;
-          }
-        });
-        menuList += "\n";
-      });
-      return menuList + "Type the number of the item to add it to your basket.";
-    }
-
-    if (
-      numericValue === 97 &&
-      (session.state === "idle" || session.state === "ordering")
-    ) {
-      if (!session.currentOrder || session.currentOrder.items.length === 0) {
-        return "Your basket is empty. Select 1 to start a new order.";
-      }
-      const currentItems = session.currentOrder.items
-        .map(
-          (i) =>
-            `${i.name} x${i.quantity || 1} (${formatCurrency(i.price * (i.quantity || 1))})`,
-        )
-        .join("\n");
-      return `Current Order Basket:\n${currentItems}\n\nTotal: ${formatCurrency(session.currentOrder.total)}\n\nSelect 99 to checkout.`;
-    }
-
-    if (
-      numericValue === 99 &&
-      (session.state === "idle" || session.state === "ordering")
-    ) {
-      if (!session.currentOrder || session.currentOrder.items.length === 0) {
-        return (
-          "No order to place. Select 1 to place a new order.\n\n" +
-          getMainMenu()
-        );
-      }
-      session.state = "scheduling";
-      await session.save();
-      return `Order initialized! Total: ${formatCurrency(session.currentOrder.total)}.\n\n[Optional] Would you like to schedule this order? Enter details (e.g., '6 PM'), or type 'SKIP' to pay immediately.`;
-    }
-
-    if (numericValue === 98) {
-      const history = await Order.find({ sessionId: sessionId });
-      if (history.length === 0)
-        return "No previous order history found.\n\n" + getMainMenu();
-      return (
-        "Order History:\n" +
-        history
-          .map(
-            (o) =>
-              `ID: ${o._id.toString().slice(-5)} - ${formatCurrency(o.totalAmount)} | Payment: ${o.paymentStatus} | Context: ${o.status}`,
-          )
-          .join("\n") +
-        "\n\nSelect 1 to place a new order."
-      );
-    }
-  }
-
-  // Handle context-specific internal conditional branches
+  // State Management
   switch (session.state) {
-    case "ordering":
-      if (
-        isNumericInput &&
-        validateSelection(input, session.menuSnapshot.length)
-      ) {
-        const num = parseInt(input, 10);
-        const targetId = session.menuSnapshot[num - 1];
-        const selected = await Menu.findOne({
-          _id: targetId,
-          isDeleted: { $ne: true },
+    case "idle":
+      if (input === "1") {
+        session.state = "awaiting_category";
+        await session.save();
+        return getCategoryMenu();
+      }
+
+      if (input === "97") {
+        if (!session.currentOrder || session.currentOrder.items.length === 0) {
+          return "Your cart is empty. Select 1 to place a new order.";
+        }
+        let cartMsg = "Current Order Basket:\n";
+        session.currentOrder.items.forEach((item, index) => {
+          const removeCode = `7${index + 1}`;
+          cartMsg += `• ${item.name} x${item.quantity} (${formatCurrency(item.price * item.quantity)}) - Select ${removeCode} to remove\n`;
         });
+        cartMsg += `\nTotal: ${formatCurrency(session.currentOrder.total)}\n\nSelect 9 to Go Back to Main Menu`;
+        return cartMsg;
+      }
 
-        if (!selected)
-          return "This item was modified or removed. Type 1 to refresh menu.";
+      // Explicit Cart item removal validation (e.g., 71, 72...)
+      if (/^7\d+$/.test(input)) {
+        const itemIndex = parseInt(input.substring(1), 10) - 1;
+        if (session.currentOrder && session.currentOrder.items[itemIndex]) {
+          const removedItem = session.currentOrder.items[itemIndex];
+          session.currentOrder.total -=
+            removedItem.price * removedItem.quantity;
+          session.currentOrder.items.splice(itemIndex, 1);
+          await session.save();
+          return `Removed ${removedItem.name} from cart. Type 97 to check cart balances or 9 to go back.`;
+        }
+      }
 
-        const existingItemIndex = session.currentOrder.items.findIndex(
-          (item) => item.name === selected.name,
-        );
-        if (existingItemIndex > -1) {
-          session.currentOrder.items[existingItemIndex].quantity =
-            (session.currentOrder.items[existingItemIndex].quantity || 1) + 1;
-        } else {
-          session.currentOrder.items.push({
-            name: selected.name,
-            price: selected.price,
-            quantity: 1,
+      if (input === "9" || input === "97") {
+        return getMainMenu();
+      }
+
+      if (input === "99") {
+        if (!session.currentOrder || session.currentOrder.items.length === 0) {
+          return "Your cart is empty. Select 1 to place a new order.";
+        }
+
+        // Enforce Idempotent Initialization
+        let order = await Order.findOne({
+          sessionId,
+          status: "Pending Payment",
+        });
+        if (!order) {
+          order = await Order.create({
+            sessionId: sessionId,
+            items: session.currentOrder.items,
+            totalAmount: session.currentOrder.total,
+            status: "Pending Payment",
           });
         }
 
-        session.currentOrder.total += selected.price;
+        session.state = "awaiting_payment";
         await session.save();
-        return `${selected.name} added to basket. Total: ${formatCurrency(session.currentOrder.total)}.\nSelect another item number, 97 to view, or 99 to checkout.`;
+        return `PAY_LINK|${process.env.APP_URL || "http://localhost:3000"}/api/pay-trigger?orderId=${order._id}&sess=${sessionId}`;
       }
-      return "Invalid menu option selected. Please choose a valid item number or press 0 to cancel.";
 
-    case "scheduling":
-      const schedulePreference =
-        input.toUpperCase() === "SKIP" ? "ASAP" : input;
-      let openOrder = await Order.findOne({
-        sessionId: sessionId,
-        status: "pending",
-        paymentStatus: "unpaid",
-      });
-
-      if (!openOrder) {
-        // Build items array map cleanly including captured explicit quantities
-        const orderItemsMapped = session.currentOrder.items.map((i) => ({
-          name: i.name,
-          price: i.price,
-          quantity: i.quantity || 1,
-        }));
-
-        openOrder = await Order.create({
+      if (input === "98") {
+        const history = await Order.find({
           sessionId: sessionId,
-          items: orderItemsMapped,
-          totalAmount: session.currentOrder.total,
-          scheduledFor: schedulePreference,
+          status: "Order Placed",
         });
-      } else {
-        openOrder.scheduledFor = schedulePreference;
-        await openOrder.save();
+        if (history.length === 0) {
+          return "No previous order history found.\n\n" + getMainMenu();
+        }
+        let historyMsg = "Order History:\n";
+        history.forEach((o) => {
+          const itemsStr = o.items
+            .map((i) => `${i.name} (${i.quantity})`)
+            .join(", ");
+          historyMsg += `• ${o.createdAt.toLocaleDateString()} - [${itemsStr}] - Total: ${formatCurrency(o.totalAmount)}\n`;
+        });
+        return historyMsg + "\nSelect 9 to Go Back to Main Menu";
       }
 
-      session.currentOrder = { items: [], total: 0 };
-      session.state = "awaiting_payment";
+      return "Invalid option. Please try again.\n\n" + getMainMenu();
+
+    case "awaiting_category":
+      if (input === "9") {
+        session.state = "idle";
+        await session.save();
+        return getMainMenu();
+      }
+
+      if (CATEGORY_MAP[input]) {
+        const categoryName = CATEGORY_MAP[input];
+        const items = await Menu.find({
+          category: categoryName,
+          isDeleted: { $ne: true },
+        });
+
+        if (items.length === 0) {
+          return `There are currently no items in ${categoryName}. Select 9 to go back.`;
+        }
+
+        session.state = "awaiting_item";
+        session.selectedCategory = categoryName;
+
+        let itemsList = `${categoryName} Menu:\n`;
+        session.menuSnapshot = []; // Clean lookup array
+
+        items.forEach((item, index) => {
+          const numericSelection = `${input}${index + 1}`;
+          itemsList += `• Select ${numericSelection} for ${item.name} (${formatCurrency(item.price)})\n`;
+          session.menuSnapshot.push(`${numericSelection}|${item._id}`);
+        });
+
+        itemsList += "• Select 9 to Go Back to Categories";
+        await session.save();
+        return itemsList;
+      }
+      return "Invalid option. Please try again.\n\n" + getCategoryMenu();
+
+    case "awaiting_item":
+      if (input === "9") {
+        session.state = "awaiting_category";
+        await session.save();
+        return getCategoryMenu();
+      }
+
+      const match = session.menuSnapshot.find((snap) =>
+        snap.startsWith(`${input}|`),
+      );
+      if (match) {
+        const itemId = match.split("|")[1];
+        session.selectedItemId = itemId;
+        session.state = "awaiting_quantity";
+        await session.save();
+        return "How many servings would you like to add?";
+      }
+      return "Invalid option. Please try again.";
+
+    case "awaiting_quantity":
+      const qty = parseInt(input, 10);
+      if (isNaN(qty) || qty <= 0) {
+        return "Invalid option. Please try again.\nHow many servings would you like to add?";
+      }
+
+      const targetItem = await Menu.findById(session.selectedItemId);
+      if (!targetItem || targetItem.isDeleted) {
+        session.state = "awaiting_category";
+        await session.save();
+        return (
+          "This item is no longer available. Returning to Categories.\n\n" +
+          getCategoryMenu()
+        );
+      }
+
+      // Push into Cart Object Structurally
+      session.currentOrder.items.push({
+        name: targetItem.name,
+        price: targetItem.price,
+        quantity: qty,
+      });
+      session.currentOrder.total += targetItem.price * qty;
+
+      session.state = "awaiting_category"; // Bounce back to category list view loop
       await session.save();
-      return `Schedule Preference Set to: ${schedulePreference}.\n\nType 'PAY' to proceed to your secure Paystack payment page or 0 to cancel.`;
+      return (
+        `Added ${qty}x ${targetItem.name} to your cart.\n\n` + getCategoryMenu()
+      );
 
     case "awaiting_payment":
-      if (input.toUpperCase() === "PAY") {
-        const pendingOrder = await Order.findOne({
-          sessionId: sessionId,
-          status: "pending",
-        }).sort({ createdAt: -1 });
-        if (!pendingOrder)
-          return "No pending order found. Select 1 to restart.";
-        return `PAY_LINK|${process.env.APP_URL || "http://localhost:3000"}/api/pay-trigger?orderId=${pendingOrder._id}&sess=${sessionId}`;
+      if (input === "9") {
+        session.state = "idle";
+        await session.save();
+        return getMainMenu();
       }
-      return "Please type 'PAY' to complete payment, or 0 to cancel.";
+      return "Your order checkout is pending. Please complete your payment via the link provided, select 0 to clear order, or select 9 to view the Main Menu.";
 
     default:
       session.state = "idle";

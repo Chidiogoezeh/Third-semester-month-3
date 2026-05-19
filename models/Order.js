@@ -12,11 +12,9 @@ const OrderSchema = new mongoose.Schema({
   totalAmount: { type: Number, default: 0 },
   status: {
     type: String,
-    enum: ["pending", "completed", "cancelled"],
-    default: "pending",
+    enum: ["Pending Payment", "Order Placed", "Cancelled"],
+    default: "Pending Payment",
   },
-  paymentStatus: { type: String, default: "unpaid" },
-  scheduledFor: { type: String, default: "ASAP" },
   createdAt: { type: Date, default: Date.now },
 });
 

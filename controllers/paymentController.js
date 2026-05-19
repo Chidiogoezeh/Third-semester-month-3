@@ -59,11 +59,9 @@ export const handlePaystackWebhook = async (req, res) => {
     });
 
     if (unconfirmedOrder) {
-      unconfirmedOrder.paymentStatus = "paid";
-      unconfirmedOrder.status = "completed";
+      unconfirmedOrder.status = "Order Placed";
       await unconfirmedOrder.save();
 
-      // Reset the related session state back to idle to allow immediate subsequent workflows
       await Session.findOneAndUpdate(
         { deviceId: unconfirmedOrder.sessionId },
         {

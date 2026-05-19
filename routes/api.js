@@ -5,6 +5,7 @@ import {
 } from "../controllers/paymentController.js";
 import Menu from "../models/Menu.js";
 import { PAYSTACK_CONFIG } from "../config/paystack.js";
+import Order from "../models/Order.js";
 
 const router = express.Router();
 
@@ -57,6 +58,15 @@ router.put("/menu/:id", adminSecureGate, async (req, res) => {
 router.delete("/menu/:id", adminSecureGate, async (req, res) => {
   await Menu.findByIdAndUpdate(req.params.id, { isDeleted: true });
   res.json({ success: true });
+});
+
+router.get("/orders", adminSecureGate, async (req, res) => {
+  try {
+    const orders = await Order.find().sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to pull transaction logs" });
+  }
 });
 
 export default router;
