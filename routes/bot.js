@@ -1,13 +1,17 @@
 import express from "express";
 const router = express.Router();
-import * as botController from "../controllers/botController.js";
 
-// Since we are using WebSockets for the chat,
-// this route handles the initial session or status checks
 router.post("/session", (req, res) => {
   const { deviceId } = req.body;
-  // Logic to initialize or retrieve session
-  res.status(200).json({ status: "success", deviceId });
+  if (!deviceId || typeof deviceId !== "string" || deviceId.trim().length < 5) {
+    return res
+      .status(400)
+      .json({
+        status: "error",
+        message: "Malformatted Session Identifier Pattern",
+      });
+  }
+  res.status(200).json({ status: "success", deviceId: deviceId.trim() });
 });
 
 export default router;
