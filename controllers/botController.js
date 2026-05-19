@@ -229,7 +229,21 @@ export const handleBotMessage = async (sessionId, message) => {
           await session.save();
           return "How many servings would you like to add?";
         }
-        return "Invalid option. Please check item listings and enter a valid numeric assignment option.";
+
+        const items = await Menu.find({ category: session.selectedCategory, isDeleted: { $ne: true } });
+        let itemsList = "Invalid option. Please try again.\n\n" + `${session.selectedCategory} Menu:\n`;
+        
+        session.menuSnapshot.forEach((snap) => {
+          if (snap.startsWith("ITEM|")) {
+            const parts = snap.split("|");
+            const dbItem = items.find(i => i._id.toString() === parts[2]);
+            if (dbItem) {
+              itemsList += `• Select ${parts[1]} for ${dbItem.name} (${formatCurrency(dbItem.price)})\n`;
+            }
+          }
+        });
+        itemsList += "• Select 9 to Go Back to Categories";
+        return itemsList;
       }
 
       case "awaiting_quantity": {
@@ -286,6 +300,7 @@ export const handleBotMessage = async (sessionId, message) => {
         if (input === "9") {
           session.state = "idle";
           session.menuSnapshot = [];
+          session.activeOrderLockId = null;
           await session.save();
           return getMainMenu();
         }
