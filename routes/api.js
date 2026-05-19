@@ -9,7 +9,6 @@ import Order from "../models/Order.js";
 
 const router = express.Router();
 
-// Simple Admin Access Authorization Middleware Strategy
 const adminSecureGate = (req, res, next) => {
   const providedToken = req.headers["x-admin-secret"] || req.query.admin_key;
   if (providedToken === PAYSTACK_CONFIG.admin_secret) {
@@ -22,7 +21,7 @@ const adminSecureGate = (req, res, next) => {
 
 router.get("/pay-trigger", initializePayment);
 
-// Webhook endpoint uses express.raw() to capture the exact, unaltered payload structure
+// Secure stream hook parsing
 router.post(
   "/paystack-webhook",
   express.raw({ type: "application/json" }),

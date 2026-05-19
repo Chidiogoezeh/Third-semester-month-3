@@ -7,7 +7,8 @@ const SessionSchema = new mongoose.Schema({
       {
         name: String,
         price: Number,
-        quantity: { type: Number, default: 1 },
+        quantity: Number,
+        removalKey: String, // Lock tracking key to prevent index shifts
       },
     ],
     total: { type: Number, default: 0 },
@@ -25,7 +26,7 @@ const SessionSchema = new mongoose.Schema({
   },
   selectedCategory: { type: String, default: "" },
   selectedItemId: { type: String, default: "" },
-  menuSnapshot: [{ type: String }], // Maps user entry string tokens (like "111") to DB _ids
+  menuSnapshot: [{ type: String }],
 });
 
 export default mongoose.model("Session", SessionSchema);

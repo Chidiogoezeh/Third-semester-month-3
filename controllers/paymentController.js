@@ -9,13 +9,13 @@ export const initializePayment = async (req, res) => {
   try {
     const order = await Order.findById(orderId);
     if (!order) return res.status(404).send("Order not found");
-    if (order.paymentStatus === "paid") {
+
+    if (order.status === "Order Placed") {
       return res.redirect(`/index.html?payment=success&orderId=${orderId}`);
     }
 
     const appUrl =
       process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
-    // Assign descriptive device references instead of static fallback email channels
     const transactionEmail = sess
       ? `${sess}@nafabite.bot`
       : "customer@naijabite.com";
@@ -24,7 +24,7 @@ export const initializePayment = async (req, res) => {
       PAYSTACK_CONFIG.initialize,
       {
         email: transactionEmail,
-        amount: Math.round(order.totalAmount * 100),
+        amount: Math.round(order.totalAmount * 100), // Secure conversion to dynamic kobo integers
         callback_url: `${appUrl}/index.html?payment=success&orderId=${orderId}&sess=${sess || ""}`,
         reference: `REF_${orderId}_${Date.now()}`,
       },
@@ -37,10 +37,9 @@ export const initializePayment = async (req, res) => {
 };
 
 export const handlePaystackWebhook = async (req, res) => {
-  // Paystack Payload Hardening Strategy: Compute hash on raw buffer string instead of parsed objects
   const hash = crypto
     .createHmac("sha512", PAYSTACK_CONFIG.secret_key)
-    .update(req.rawBody)
+    .update(req.rawBody) // Safely runs hashes over captured stream buffers
     .digest("hex");
 
   if (hash !== req.headers["x-paystack-signature"]) {
@@ -52,22 +51,22 @@ export const handlePaystackWebhook = async (req, res) => {
     const reference = event.data.reference;
     const orderId = reference.split("_")[1];
 
-    // Enforce Idempotency using fine-grained atomic locks on matching document queries
-    const unconfirmedOrder = await Order.findOne({
-      _id: orderId,
-      paymentStatus: "unpaid",
-    });
+    // Atomically find and lock preventing concurrent replay sweeps
+    const confirmedOrder = await Order.findOneAndUpdate(
+      { _id: orderId, status: "Pending Payment" },
+      { $set: { status: "Order Placed" } },
+      { new: true },
+    );
 
-    if (unconfirmedOrder) {
-      unconfirmedOrder.status = "Order Placed";
-      await unconfirmedOrder.save();
-
+    if (confirmedOrder) {
       await Session.findOneAndUpdate(
-        { deviceId: unconfirmedOrder.sessionId },
+        { deviceId: confirmedOrder.sessionId },
         {
-          state: "idle",
-          currentOrder: { items: [], total: 0 },
-          menuSnapshot: [],
+          $set: {
+            state: "idle",
+            currentOrder: { items: [], total: 0 },
+            menuSnapshot: [],
+          },
         },
       );
     }
