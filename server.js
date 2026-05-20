@@ -1,11 +1,17 @@
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import path from "path";
+import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
 import { handleBotMessage, getMainMenu } from "./controllers/botController.js";
 import Session from "./models/Session.js";
 import apiRoutes from "./routes/api.js";
 import botRoutes from "./routes/bot.js";
+import { PAYSTACK_CONFIG } from "./config/paystack.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
@@ -15,16 +21,31 @@ const io = new Server(httpServer, {
 
 connectDB();
 
-// Global JSON and urlencoded parsers (Skip request stream verification hacks here)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve secure admin portal route with backend gatekeeping mechanisms
+app.get("/admin", (req, res) => {
+  const token = req.query.token;
+  if (token === PAYSTACK_CONFIG.admin_secret) {
+    return res.sendFile(path.join(__dirname, "views", "admin.html"));
+  }
+  res
+    .status(401)
+    .send("Access Denied: Administrative Session Token Missing or Invalid.");
+});
+
+// Static files served strictly after specific dynamic authorization interceptors
 app.use(express.static("public"));
 
-// Attach io to req object contextually
-app.use("/api", (req, res, next) => {
-  req.io = io;
-  next();
-}, apiRoutes);
+app.use(
+  "/api",
+  (req, res, next) => {
+    req.io = io;
+    next();
+  },
+  apiRoutes,
+);
 
 app.use("/bot", botRoutes);
 
@@ -37,10 +58,16 @@ io.on("connection", (socket) => {
       const session = await Session.findOne({ deviceId: sessionId });
       if (session && session.state !== "idle") {
         let recoveryGreeting = "Welcome back! ";
-        if (["awaiting_category", "awaiting_item", "awaiting_quantity"].includes(session.state)) {
-          recoveryGreeting += "You have an active ordering session open. Send 97 to view your basket or select 0 to reset.";
+        if (
+          ["awaiting_category", "awaiting_item", "awaiting_quantity"].includes(
+            session.state,
+          )
+        ) {
+          recoveryGreeting +=
+            "You have an active ordering session open. Send 97 to view your basket or select 0 to reset.";
         } else if (session.state === "awaiting_payment") {
-          recoveryGreeting += "Your checkout order is waiting for confirmation. Please complete payment using the link provided, or enter 9 to access the main menu.";
+          recoveryGreeting +=
+            "Your checkout order is waiting for confirmation. Please complete payment using the link provided, or enter 9 to access the main menu.";
         } else {
           recoveryGreeting += "\n\n" + getMainMenu();
         }
@@ -49,7 +76,9 @@ io.on("connection", (socket) => {
         socket.emit("bot-response", { text: getMainMenu() });
       }
     } catch (err) {
-      socket.emit("bot-response", { text: "System connection dropped. Send 0 to refresh state loops manually." });
+      socket.emit("bot-response", {
+        text: "System connection dropped. Send 0 to refresh state loops manually.",
+      });
     }
   });
 
@@ -61,4 +90,6 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => console.log(`Server running safely on port ${PORT}`));
+httpServer.listen(PORT, () =>
+  console.log(`Server running safely on port ${PORT}`),
+);

@@ -256,3 +256,12 @@ tr:hover {
 td.status-order-placed {
     color: #2980b9;
 }
+
+.fulfill-action-layout {
+    margin: 0;
+}
+
+.text-success-bold {
+    color: var(--success);
+    font-weight: bold;
+}

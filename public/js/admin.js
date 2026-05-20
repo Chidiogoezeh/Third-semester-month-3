@@ -15,10 +15,21 @@ const ordersEmptyMsg = document.getElementById("orders-empty-msg");
 let editModeId = null;
 let isMutating = false;
 
+// Auto-inject URL token configuration into session parameters if present
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get("token")) {
+  sessionStorage.setItem("admin_key", urlParams.get("token"));
+  // Clean URL bar parameters quietly
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
+
 let ADMIN_TOKEN = sessionStorage.getItem("admin_key");
 if (!ADMIN_TOKEN) {
   ADMIN_TOKEN = prompt("Enter Admin Access Token:");
-  if (ADMIN_TOKEN) sessionStorage.setItem("admin_key", ADMIN_TOKEN);
+  if (ADMIN_TOKEN) {
+    sessionStorage.setItem("admin_key", ADMIN_TOKEN);
+    window.location.href = `/admin?token=${ADMIN_TOKEN}`;
+  }
 }
 
 const getAuthHeaders = () => ({
@@ -128,10 +139,10 @@ const fetchAndRenderMenu = async () => {
         document.getElementById("item-price").value = item.price;
 
         const selectElement = document.getElementById("item-category");
-
         let targetOption = Array.from(selectElement.options).find(
           (opt) => opt.value === item.category,
         );
+
         if (!targetOption) {
           targetOption = document.createElement("option");
           targetOption.value = item.category;
@@ -140,7 +151,6 @@ const fetchAndRenderMenu = async () => {
         }
 
         selectElement.value = item.category;
-
         editModeId = item._id;
         submitItemBtn.textContent = "Update Item";
 
@@ -200,7 +210,6 @@ const fetchAndRenderOrders = async () => {
     ordersEmptyMsg.classList.add("hidden-element");
     ordersTable.classList.remove("hidden-element");
 
-    // Fix table header
     const headerRow = ordersTable.querySelector("thead tr");
     if (headerRow && !headerRow.querySelector(".actions-head")) {
       const th = document.createElement("th");
@@ -221,12 +230,9 @@ const fetchAndRenderOrders = async () => {
         .map((i) => `${i.name} (x${i.quantity})`)
         .join(", ");
 
-      // Generate context validation trigger button
       if (order.status === "Order Placed") {
         const fulfillBtn = document.createElement("button");
-        fulfillBtn.className = "payment-action-button";
-        fulfillBtn.style.backgroundColor = "var(--success)";
-        fulfillBtn.style.margin = "0";
+        fulfillBtn.className = "payment-action-button fulfill-action-layout";
         fulfillBtn.textContent = "Mark Fulfilled";
         fulfillBtn.addEventListener("click", async () => {
           isMutating = true;
@@ -242,8 +248,7 @@ const fetchAndRenderOrders = async () => {
         actionTd.appendChild(fulfillBtn);
       } else if (order.status === "Order Fulfilled") {
         actionTd.textContent = "✅ Ready for Pickup";
-        actionTd.style.color = "var(--success)";
-        actionTd.style.fontWeight = "bold";
+        actionTd.className = "text-success-bold";
       } else {
         actionTd.textContent = "-";
       }
@@ -294,7 +299,6 @@ menuForm.addEventListener("submit", async (e) => {
   isMutating = true;
   let res;
 
-  // Package the accurate payload types for Mongoose
   const payload = {
     name,
     description,
@@ -319,10 +323,8 @@ menuForm.addEventListener("submit", async (e) => {
 
     if (res.ok) {
       menuForm.reset();
-      editModeId = null; // Clean out global reference block
+      editModeId = null;
       submitItemBtn.textContent = "Add Item";
-
-      // Refresh user view tracking grids instantly
       await fetchAndRenderMenu();
       await fetchAndRenderCategories();
     } else {
@@ -339,7 +341,9 @@ menuForm.addEventListener("submit", async (e) => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  fetchAndRenderMenu().then(() => fetchAndRenderCategories());
-  fetchAndRenderOrders();
-  setInterval(fetchAndRenderOrders, 10000);
+  if (ADMIN_TOKEN) {
+    fetchAndRenderMenu().then(() => fetchAndRenderCategories());
+    fetchAndRenderOrders();
+    setInterval(fetchAndRenderOrders, 10000);
+  }
 });
