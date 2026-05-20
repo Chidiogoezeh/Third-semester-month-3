@@ -9,7 +9,8 @@
     --gray-border: #ddd;
 }
 
-body {
+/* Updated selector to isolate general chatbot page formatting */
+body:not(.admin-body) {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--bg);
     margin: 0;
@@ -17,6 +18,16 @@ body {
     justify-content: center;
     align-items: center;
     height: 100vh;
+}
+
+/* Added specific body formatting for the dashboard grid */
+body.admin-body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg);
+    margin: 0;
+    padding: 0;
+    display: block;
+    height: auto;
 }
 
 #chat-container {
@@ -66,7 +77,6 @@ header {
     align-self: flex-end;
 }
 
-/* Fix applied here to target both id and structural class configurations */
 #input-area, .input-area {
     display: flex;
     padding: 15px;
@@ -138,8 +148,8 @@ button:hover {
 
 .admin-container {
     padding: 20px;
-    max-width: 800px;
-    margin: 0 auto;
+    max-width: 900px;
+    margin: 30px auto;
 }
 
 table {
@@ -188,7 +198,7 @@ tr:hover {
 .section-divider {
     border: 0;
     border-top: 1px solid var(--gray-border);
-    margin: 20px 0;
+    margin: 30px 0;
 }
 
 .status-pending-payment {
@@ -206,6 +216,10 @@ tr:hover {
     gap: 10px;
     margin-bottom: 15px;
     flex-wrap: wrap;
+    background: var(--white);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--gray-border);
 }
 
 .category-tag-list {
@@ -213,6 +227,9 @@ tr:hover {
     gap: 10px;
     flex-wrap: wrap;
     margin-top: 10px;
+    background: var(--white);
+    padding: 10px;
+    border-radius: 6px;
 }
 
 .category-chip {
