@@ -1,145 +1,177 @@
-Naija Bite Restaurant ChatBot & Admin Dashboard
+Naija Bite Restaurant ChatBot and Admin Dashboard
 
-Welcome to Naija Bite, a fully automated, mobile-responsive restaurant conversational chatbot built with Node.js, Express, Socket.io, and MongoDB. It allows users to browse menus categorized by Nigerian delicacies, place and schedule orders, view active carts or historical transactions, and complete payments seamlessly via Paystack. It also includes a web-based Admin Dashboard for full CRUD menu lifecycle control.
+Naija Bite is a fully automated, mobile-responsive restaurant conversational chatbot built with Node.js, Express, Socket.io, and MongoDB. The system utilizes a device-bound Finite State Machine (FSM) to allow customers to seamlessly browse menus, manage a persistent shopping cart, and complete secure payments via Paystack without requiring a manual user login. It includes a web-based Administrative Dashboard for real-time CRUD menu configuration and live order monitoring.
 
-System Architecture Overview
+- 1. System Architecture Overview
 
-The system features a decoupled component layout structured for state continuity and atomic real-time updates:
+The codebase is split into decoupled, stateless components designed for immediate synchronization between administrative changes and live customer chat windows:
 
-```
 ├── config/
-│   ├── db.js                 # Mongoose / MongoDB core connection pipeline
-│   └── paystack.js           # Production & Test credential matrix environments
+│ ├── db.js # Mongoose / MongoDB automatic retry connection pipeline
+│ └── paystack.js # Secure environment key validation and administrative secret gate
 ├── controllers/
-│   ├── botController.js      # Finite State Machine routing user commands
-│   └── paymentController.js  # Paystack initialization and verification webhooks
+│ ├── botController.js # Core Finite State Machine (FSM) routing conversational input
+│ └── paymentController.js # Paystack gateway checkouts and secure cryptographic webhooks
 ├── models/
-│   ├── Menu.js               # Persistence layer for menu items and pricing structures
-│   ├── Order.js              # State definitions for orders and billing tracking
-│   └── Session.js            # Key-value state registers map linked to specific devices
+│ ├── Menu.js # Collection schema for dishes, category grouping, and soft deletes
+│ ├── Order.js # State tracking for sales totals and idempotency fingerprints
+│ └── Session.js # Persistent key-value device states, carts, and menu snapshots
 ├── public/
-│   ├── css/style.css         # Responsive layout configurations
-│   ├── js/
-│   │   ├── admin.js          # Asynchronous DOM controller for CRUD mechanics
-│   │   ├── app.js            # Gateway event-handler linking frontend interface to Socket pipeline
-│   │   └── socket-client.js  # Clean abstractions managing live WebSockets
-│   ├── admin.html            # Entry point markup for the Administrative Dashboard
-│   └── index.html            # Main User Interface presentation framework
+│ ├── css/style.css # Unified CSS variable matrix and responsive layout rules
+│ ├── js/
+│ │ ├── admin.js # Asynchronous DOM engine for CRUD operations and live order streams
+│ │ ├── app.js # Client-side chatbot interface, session management, and fallback handler
+│ │ └── socket-client.js # Clean abstraction layer for persistent WebSocket channels
+│ ├── admin.html # Markup structure for the Administrative Management Dashboard
+│ └── index.html # Main customer interface framework housing the responsive chat viewport
 ├── routes/
-│   ├── api.js                # Core API endpoint declarations
-│   └── chat.js               # Initial fallback REST routing rules 
+│ ├── api.js # Core API endpoint declarations and administrative secure gates
+│ └── bot.js # Session identification and entry-point routing modules
 ├── utils/
-│   └── helpers.js            # Validation algorithms and data parsing formatting utilities
-└── server.js                 # System entrypoint uniting WebSockets, API engines, and HTTP server layers
+│ └── helpers.js # Precision integer currency sanitizers and string formatters
+└── server.js # Central system entry point binding HTTP, WebSockets, and API pipelines
 
-```
+- 2. Installation and Quickstart
 
-Installation & Execution Guide
+- System Requirements
 
- 1. System Requirements
+Node.js: v16.x or newer
+MongoDB: Local Community Server instance or an Atlas cloud cluster
+Paystack: Active Test or Production profile API keys
 
--Node.js: (v16.x or newer recommended)
--MongoDB: instance (Local or Atlas cloud cluster)
--Paystack API Keys (Test profile environment credentials)
+- Step 1: Environment Configuration Setup
 
- 2. Environment Configuration Setup
+Create a `.env` file in the root workspace directory and populate it with your specific operational credentials:
 
-Create a file named `.env` in the root workspace folder and configure your parameters:
+.env
 
-PORT=3000
-MONGO_URI=mongodb+srv://yourUsername:yourPassword@cluster.example.mongodb.net/<naijabite>
-PAYSTACK_SECRET_KEY=sk_test_your_secure_paystack_secret_key_string
-APP_URL=http://localhost:3000
-BASE_URL=http://localhost:3000
+- # Server Configuration
 
- 3. Dependencies Setup
+  PORT=3000
+  APP_URL=http://localhost:3000
 
-Execute the following clean installs sequentially to pull up the dependency environment tree:
+- # Database Configuration
 
-npm install express mongoose socket.io axios dotenv
+  MONGO_URI=mongodb://127.0.0.1:27017/restaurant_chatbot
 
- 4. Database Initialization
+- # Paystack API Credentials
 
-Ensure your MongoDB collection contains items matching the core categories (*Rice Dishes, Swallow & Soups, Beans and Tubers, Snacks and Protein, Drinks*). You can run your `seed.js` script to populate the default menu items into the database.
+  PAYSTACK_SECRET_KEY=sk_test_your_exact_paystack_secret_key_here
 
- 5. Running the Application
+- # Administrative Access Protection
 
-Spin up the main server cluster instance:
+  ADMIN_SECRET_KEY=SuperSecretAdminKey123
+
+- Step 2: Install Project Dependencies
+
+Execute the clean installations sequentially to pull down the project dependency tree:
+
+npm install express mongoose socket.io axios dotenv crypto
+npm install --save-dev nodemon
+
+- Step 3: Populate Initial Menu Data
+
+Execute the seed script. This automatically creates your database index structures, wipes any stale data, and pre-populates your standard dynamic categories (_Rice Dishes, Swallow & Soups, Drinks, etc._):
+
+node seed.js
+
+- Step 4: Launch the Server Cluster
+
+Spin up the main application thread using Node or Nodemon:
 
 node server.js
 
-The server will bind on the specified environment port (`http://localhost:3000`).
+The application will launch on your configured workspace address: `http://localhost:3000`.
 
-Interaction Flow & Command Map
+- 3. Core Chatbot Interaction and State Machine
 
-The system uses a device-bound Finite State Machine (FSM) engine to run user sessions seamlessly across page reloads without requiring manual authentication credentials.
+The conversation layer runs on an atomic, multi-state system bound directly to individual client web layout nodes. Sessions are automatically recovered on reconnection without manual authentication gates.
 
+                  ┌────────────────────────────────────────┐
+                  │               IDLE STATE               │◄──────────────────────────────┐
+                  └───────────┬────────────────┬───────────┘                               │
+                              │                │                                           │
+                    [Select 1]│                │[Select 99]                                │
+                              ▼                ▼                                           │
+         ┌──────────────────────┐    ┌────────────────────────────────────────┐            │
+         │  AWAITING_CATEGORY   │    │            AWAITING_PAYMENT            │            │
+         └────────────┬─────────┘    └───────────────────┬────────────────────┘            │
+                      │                                  │                                 │
+           [Select Category Code]                        │[Webhook / Success Callback]     │
+                      ▼                                  ▼                                 │
+         ┌──────────────────────┐    ┌────────────────────────────────────────┐            │
+         │    AWAITING_ITEM     │    │        ORDER CONFIRMED STATUS          ├────────────┘
+         └────────────┬─────────┘    └────────────────────────────────────────┘
+                      │
+             [Select Item Code]
+                      ▼
+         ┌──────────────────────┐
+         │  AWAITING_QUANTITY   │
+         └────────────┬─────────┘
+                      │
+               [Enter Quantity]
+                      ▼
+               (Auto Cart Push) ───► Loop back to AWAITING_CATEGORY Menu
 
-                  ┌──────────────────────────────┐
-                  │          IDLE STATE          │◄───────────────────────────┐
-                  └──────────────┬───────────────┘                            │
-                                 │                                            │
-                        [Select 1: View Menu]                                 │
-                                 │                                            │
-                                 ▼                                            │
-                  ┌──────────────────────────────┐                            │
-                  │        ORDERING STATE        │                            │
-                  └──────────────┬───────────────┘                            │
-                                 │                                            │
-                     [Select 99: Place Order]                                 │
-                                 │                                            │
-                                 ▼                                            │
-                  ┌──────────────────────────────┐                            │
-                  │       SCHEDULING STATE       │                            │
-                  └──────────────┬───────────────┘                            │
-                                 │                                            │
-                     [Enter Window / Type SKIP]                               │
-                                 │                                            │
-                                 ▼                                            │
-                  ┌──────────────────────────────┐                            │
-                  │   AWAITING PAYMENT STATE     │                            │
-                  └──────────────┬───────────────┘                            │
-                                 │                                            │
-                            [Type PAY]                                        │
-                                 │                                            │
-                                 ▼                                            │
-                  ┌──────────────────────────────┐                            │
-                  │    REDIRECT TO PAYSTACK      │                            │
-                  └──────────────┬───────────────┘                            │
-                                 │                                            │
-                     [Verification / Webhook]                                 │
-                                 │                                            │
-                                 ▼                                            │
-                  ┌──────────────────────────────┐                            │
-                  │    COMPLETED / RECOVERY      ├────────────────────────────┘
-                  └──────────────────────────────┘
+- Global Commands Mapping
 
-```
+The chatbot monitors structural numeric arguments at any level of the idle flow to manipulate state tracking objects securely:
 
-Main Root Commands
+- **`1`**: Compiles an active category mapping layer pulled directly from the `Menu` collection. This creates an isolated, numeric temporary lookup snapshot on the user's document to safely process sub-menu inputs.
+- **`97`**: Queries the `Session` schema to aggregate, compute, and format active order sub-totals, while appending unique dynamic removal codes (`7[key]`) for cart maintenance.
+- **`98`**: Scans the long-term `Order` document index to output completed receipts with historical dates, quantities, and cash metrics.
+- **`99`**: Begins checkout by calculating local weights, changing the session status, and returning a secure checkout string payload.
+- **`0`**: Deletes all array elements from the current shopper's cart, wipes operational temporary snapshots, resets structural locks, and returns the user to the main entry layout.
 
-The chatbot monitors input streams dynamically at runtime. Users can issue global structural shortcuts from any interface level:
+- 4. Advanced Technical Implementation Features
 
-1: Compiles an explicit categorized query across the `Menu` collection schema. Stores positions atomically inside an active snapshot map array to resolve selection requests correctly.
-97: Queries the `Session` document collection to extract and calculate your active order breakdown and item pricing sub-totals.
-98: Scans the persistent `Order` history schema to display historical receipts tied to your specific device footprint ID.
-99: Submits the structural content payload from the active basket to generate a new transaction entry. Advances the session pointer context straight into the scheduling stage.
-0: Clears active cart buffers, terminates ongoing payment processes, sets pending transactions to `cancelled`, and restores the bot configuration state back to the main system greeting.
+- Secure Local Session Continuity
 
-Paystack Checkout & Order Scheduling Pipeline
+Instead of high-overhead traditional tracking engines, user identity is assigned using an encrypted browser local storage string (`bot_session`), initialized with a strict UUIDv4 verification pattern:
 
-1. Checkout Trigger: When a user inputs option `99`, an order snapshot entry is committed to MongoDB with an initial status of `pending`.
-2. Flexible Delivery Windows: The conversation state moves to `scheduling`. The client is prompted to type a specific delivery slot (e.g., *7 PM tomorrow*) or submit `SKIP` to schedule the delivery immediately (`ASAP`).
-3. Secure Token Distribution: The interface generates a dynamic link pointing directly to the checkout engine endpoint: `/api/pay-trigger?orderId=<Target_ID>`.
-4. Gateway Integration: The API controller references the local order total, multiplies the figure by 100 to meet Kobo parameter standards, and sends a transaction initialization request to the Paystack API servers. It then redirects the browser window directly to the secure payment page.
-5. Session Recovery: After authorization processing completes, the platform redirects the transaction handle back to the success processing endpoint: `/api/payment-success`.
-6. Payment Finalization: The system sets the order's status to `completed` and updates its billing tracking status to `paid`. The system then routes the client back to the root application view (`/?payment=success`), triggering a success confirmation alert in the conversation history window.
+- javascript
+  const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+If a user closes their window or experiences network drops during checkout, the Socket.io connection layer intercepts the `join-chat` pipeline. It automatically reads their state from MongoDB and provides a targeted context recovery instruction instead of breaking the flow.
 
-Mobile-Responsive Admin Dashboard
+- Cryptographic Double-Charge Prevention (Idempotency)
 
-The system features an integrated administrative web workspace accessible via `admin.html`. This interface gives managers full control over the restaurant's offerings without needing manual database access:
+Selecting `99` creates a SHA-256 fingerprint token composed of the customer's unique device ID, the items array string, and the raw currency balance:
 
-Real-time Management: Administrators can add new dishes, update pricing, or change descriptions. Changes take effect instantly across all active customer chat sessions.
-Adaptive Display Control: Built with clean CSS variables and modern layout styling, the management dashboard balances data density and scannability across desktop displays, tablets, and smartphone interfaces.
-Dynamic Data Updates: The interface uses modern JavaScript DOM manipulation logic. Content updates are rendered efficiently on the fly, preventing full-page reloads and keeping your data sync secure.</Target_ID>
+- javascript
+  const itemPayloadFingerprint = crypto
+  .createHash("sha256")
+  .update(JSON.stringify(session.currentOrder.items) + session.currentOrder.total + session.deviceId)
+  .digest("hex");
+
+The database blocks duplicate transaction initialization requests matching an active token. If a consumer clicks a checkout link multiple times, the engine catches the duplicate lock, intercepts the query, and routes them to the original pending checkout process securely.
+
+- Floating-Point Math Failure Isolation
+
+To eliminate floating-point calculation errors native to JavaScript, all currency calculations are converted into safe integers (representing Nigerian Kobo values) via a precision anchoring algorithm before hitting database totals or the external Paystack API:
+
+- javascript
+  export const safeIntAmount = (amount) => Math.round((amount \* 100).toFixed(2));
+
+- Clean Webhook Transitions and URL Sanitization
+
+When a customer clicks the secure payment button, they are redirected to a temporary gateway route (`/api/pay-trigger`) which coordinates initialization calls with Paystack. Upon a successful transaction, Paystack fires an authenticated webhook back to `/api/paystack-webhook`, validating the transaction signature with an HMAC-SHA512 key check.
+
+Once confirmed, the user is redirected back to the app with clear indicators. To prevent looping issues caused by browser reloads, `app.js` instantly strips payment tokens from the browser address bar using the HTML5 history manipulation engine:
+
+- javascript
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+- 5. Administrative Dashboard Architecture
+
+The dashboard accessible via `admin.html` provides a real-time command portal for managing restaurant menus and active orders:
+
+- Token-Gated Security Control: All operations modifying the database (`POST`, `PUT`, `DELETE`) pass through an explicit router gate (`adminSecureGate`), which cross-references incoming payloads against your encrypted `x-admin-secret` header.
+- Cascading Soft Deletions: When an entire item category is dropped, the admin engine pulls up matching underlying identifiers and flags them as `isDeleted: true`. This prevents broken indexes for past customer orders while immediately removing the items from the active menu.
+- Stateless UI Pipeline: The control deck reads active order data streams on an automated `10000ms` polling interval, sorting requests between **Pending Payment** and **Order Placed** categories cleanly.
+
+- Contribution
+  Follow best practices
+
+License
+MIT
