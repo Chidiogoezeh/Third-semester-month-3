@@ -6,8 +6,9 @@ const userInput = document.getElementById("user-input");
 
 const initializeSession = () => {
   let id = localStorage.getItem("bot_session");
-  const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  
+  const isValidUuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
   if (id && id.startsWith("sess_")) {
     const rawUuid = id.substring(5);
     if (!isValidUuid.test(rawUuid)) id = null;
@@ -70,9 +71,16 @@ if (socket) {
     const sessionToken = urlParams.get("sess");
 
     if (paymentStatus === "success") {
-      sendMessage("user-selection", { sessionId: sessionToken || sessionId, selection: "99" });
+      // Send a dedicated text command or re-query string to bypass or gracefully force state evaluation
+      sendMessage("user-selection", {
+        sessionId: sessionToken || sessionId,
+        selection: "9",
+      });
     } else if (paymentStatus === "failed") {
-      appendMessage("Payment tracking verification failed. Please try again from option 99.", "bot");
+      appendMessage(
+        "Payment tracking verification failed. Please try again from option 99.",
+        "bot",
+      );
     }
     window.history.replaceState({}, document.title, window.location.pathname);
   });

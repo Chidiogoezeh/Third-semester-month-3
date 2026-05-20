@@ -11,30 +11,38 @@ export const getMainMenu = () => `Main Menu:
 • Select 98 to See order history
 • Select 0 to Clear/Cancel current order`;
 
-const formatInvalidOption = (currentMenuText) => `Invalid option. Please try again.\n\n${currentMenuText}`;
+const formatInvalidOption = (currentMenuText) =>
+  `Invalid option. Please try again.\n\n${currentMenuText}`;
 
 export const handleBotMessage = async (sessionId, message) => {
-  if (!sessionId || typeof sessionId !== "string" || sessionId.trim().length < 5) {
+  if (
+    !sessionId ||
+    typeof sessionId !== "string" ||
+    sessionId.trim().length < 5
+  ) {
     return "Session context corrupted. Please refresh your browser client application.";
   }
 
   try {
-    let session = await Session.findOne({ deviceId: sessionId }) || await Session.create({
-      deviceId: sessionId,
-      currentOrder: { items: [], total: 0 },
-      state: "idle",
-    });
+    let session =
+      (await Session.findOne({ deviceId: sessionId })) ||
+      (await Session.create({
+        deviceId: sessionId,
+        currentOrder: { items: [], total: 0 },
+        state: "idle",
+      }));
 
     const input = message.trim();
 
     if (input === "0") {
-      const isEmpty = !session.currentOrder || session.currentOrder.items.length === 0;
+      const isEmpty =
+        !session.currentOrder || session.currentOrder.items.length === 0;
       session.currentOrder = { items: [], total: 0 };
       session.state = "idle";
       session.menuSnapshot = [];
       session.activeOrderLockId = null;
       await session.save();
-      return isEmpty 
+      return isEmpty
         ? `Your cart is already empty.\n\n${getMainMenu()}`
         : `Your order has been cleared.\n\n${getMainMenu()}`;
     }
@@ -47,7 +55,9 @@ export const handleBotMessage = async (sessionId, message) => {
     switch (session.state) {
       case "idle":
         if (input === "1") {
-          const categories = await Menu.distinct("category", { isDeleted: { $ne: true } });
+          const categories = await Menu.distinct("category", {
+            isDeleted: { $ne: true },
+          });
           if (categories.length === 0) {
             return `Our kitchen is currently updating the menu. Please check back shortly!\n\n${getMainMenu()}`;
           }
@@ -68,7 +78,10 @@ export const handleBotMessage = async (sessionId, message) => {
         }
 
         if (input === "97") {
-          if (!session.currentOrder || session.currentOrder.items.length === 0) {
+          if (
+            !session.currentOrder ||
+            session.currentOrder.items.length === 0
+          ) {
             return "Your cart is empty. Select 1 to place a new order.";
           }
           let cartMsg = "Current Order Basket:\n";
@@ -82,13 +95,19 @@ export const handleBotMessage = async (sessionId, message) => {
         if (/^7[a-zA-Z0-9]+$/.test(input)) {
           const targetKey = input.substring(1);
           if (session.currentOrder && session.currentOrder.items.length > 0) {
-            const matchIndex = session.currentOrder.items.findIndex((i) => i.removalKey === targetKey);
+            const matchIndex = session.currentOrder.items.findIndex(
+              (i) => i.removalKey === targetKey,
+            );
             if (matchIndex !== -1) {
               const removedItem = session.currentOrder.items[matchIndex];
-              const currentTotalCents = safeIntAmount(session.currentOrder.total);
-              const lineCostCents = safeIntAmount(removedItem.price) * removedItem.quantity;
-              
-              session.currentOrder.total = (currentTotalCents - lineCostCents) / 100;
+              const currentTotalCents = safeIntAmount(
+                session.currentOrder.total,
+              );
+              const lineCostCents =
+                safeIntAmount(removedItem.price) * removedItem.quantity;
+
+              session.currentOrder.total =
+                (currentTotalCents - lineCostCents) / 100;
               session.currentOrder.items.splice(matchIndex, 1);
               await session.save();
               return `Removed ${removedItem.name} from cart. Type 97 to check cart balances or 9 to go back.`;
@@ -100,7 +119,10 @@ export const handleBotMessage = async (sessionId, message) => {
         if (input === "9") return getMainMenu();
 
         if (input === "99") {
-          if (!session.currentOrder || session.currentOrder.items.length === 0) {
+          if (
+            !session.currentOrder ||
+            session.currentOrder.items.length === 0
+          ) {
             session.state = "idle";
             await session.save();
             return "Your cart is empty. Select 1 to place a new order.";
@@ -108,16 +130,25 @@ export const handleBotMessage = async (sessionId, message) => {
 
           const itemPayloadFingerprint = crypto
             .createHash("sha256")
-            .update(JSON.stringify(session.currentOrder.items) + session.currentOrder.total + session.deviceId)
+            .update(
+              JSON.stringify(session.currentOrder.items) +
+                session.currentOrder.total +
+                session.deviceId,
+            )
             .digest("hex");
 
-          let order = await Order.findOne({ idempotencyToken: itemPayloadFingerprint });
+          let order = await Order.findOne({
+            idempotencyToken: itemPayloadFingerprint,
+          });
           if (!order) {
             const verifiedItems = [];
             let recalibratedCentsTotal = 0;
 
             for (const localItem of session.currentOrder.items) {
-              const freshMenuDbItem = await Menu.findOne({ _id: localItem.menuId, isDeleted: { $ne: true } });
+              const freshMenuDbItem = await Menu.findOne({
+                _id: localItem.menuId,
+                isDeleted: { $ne: true },
+              });
               if (!freshMenuDbItem) {
                 return `Menu items updated. '${localItem.name}' is no longer available. Type 0 to clear and restart checkout.`;
               }
@@ -127,7 +158,8 @@ export const handleBotMessage = async (sessionId, message) => {
                 price: freshMenuDbItem.price,
                 quantity: localItem.quantity,
               });
-              recalibratedCentsTotal += safeIntAmount(freshMenuDbItem.price) * localItem.quantity;
+              recalibratedCentsTotal +=
+                safeIntAmount(freshMenuDbItem.price) * localItem.quantity;
             }
 
             session.currentOrder.total = recalibratedCentsTotal / 100;
@@ -150,12 +182,18 @@ export const handleBotMessage = async (sessionId, message) => {
         }
 
         if (input === "98") {
-          const history = await Order.find({ sessionId: session.deviceId, status: "Order Placed" }).sort({ createdAt: -1 });
-          if (history.length === 0) return `No previous order history found.\n\n${getMainMenu()}`;
-          
+          const history = await Order.find({
+            sessionId: session.deviceId,
+            status: "Order Placed",
+          }).sort({ createdAt: -1 });
+          if (history.length === 0)
+            return `No previous order history found.\n\n${getMainMenu()}`;
+
           let historyMsg = "Order History:\n";
           history.forEach((o) => {
-            const itemsStr = o.items.map((i) => `${i.name} (${i.quantity})`).join(", ");
+            const itemsStr = o.items
+              .map((i) => `${i.name} (${i.quantity})`)
+              .join(", ");
             historyMsg += `• ${new Date(o.createdAt).toLocaleDateString()} - [${itemsStr}] - Total: ${formatCurrency(o.totalAmount)}\n`;
           });
           return `${historyMsg}\nSelect 9 to Go Back to Main Menu`;
@@ -171,12 +209,18 @@ export const handleBotMessage = async (sessionId, message) => {
           return getMainMenu();
         }
 
-        const catMatch = session.menuSnapshot.find((snap) => snap.startsWith(`CAT|${input}|`));
+        const catMatch = session.menuSnapshot.find((snap) =>
+          snap.startsWith(`CAT|${input}|`),
+        );
         if (catMatch) {
           const categoryName = catMatch.split("|")[2];
-          const items = await Menu.find({ category: categoryName, isDeleted: { $ne: true } });
+          const items = await Menu.find({
+            category: categoryName,
+            isDeleted: { $ne: true },
+          });
 
-          if (items.length === 0) return `There are currently no items in ${categoryName}. Select 9 to go back.`;
+          if (items.length === 0)
+            return `There are currently no items in ${categoryName}. Select 9 to go back.`;
 
           session.state = "awaiting_item";
           session.selectedCategory = categoryName;
@@ -194,8 +238,11 @@ export const handleBotMessage = async (sessionId, message) => {
           return itemsList;
         }
 
-        const fallbackActiveCats = await Menu.distinct("category", { isDeleted: { $ne: true } });
-        let errCatMsg = "Invalid choice. Please choose from available items:\n\nSelect a category:\n";
+        const fallbackActiveCats = await Menu.distinct("category", {
+          isDeleted: { $ne: true },
+        });
+        let errCatMsg =
+          "Invalid choice. Please choose from available items:\n\nSelect a category:\n";
         session.menuSnapshot = [];
         fallbackActiveCats.forEach((cat, idx) => {
           const selectionCode = `1${idx + 1}`;
@@ -208,7 +255,9 @@ export const handleBotMessage = async (sessionId, message) => {
 
       case "awaiting_item": {
         if (input === "9") {
-          const categories = await Menu.distinct("category", { isDeleted: { $ne: true } });
+          const categories = await Menu.distinct("category", {
+            isDeleted: { $ne: true },
+          });
           session.state = "awaiting_category";
           session.menuSnapshot = [];
           let catMsg = "Select a category:\n";
@@ -222,7 +271,9 @@ export const handleBotMessage = async (sessionId, message) => {
           return catMsg;
         }
 
-        const itemMatch = session.menuSnapshot.find((snap) => snap.startsWith(`ITEM|${input}|`));
+        const itemMatch = session.menuSnapshot.find((snap) =>
+          snap.startsWith(`ITEM|${input}|`),
+        );
         if (itemMatch) {
           session.selectedItemId = itemMatch.split("|")[2];
           session.state = "awaiting_quantity";
@@ -230,13 +281,18 @@ export const handleBotMessage = async (sessionId, message) => {
           return "How many servings would you like to add?";
         }
 
-        const items = await Menu.find({ category: session.selectedCategory, isDeleted: { $ne: true } });
-        let itemsList = "Invalid option. Please try again.\n\n" + `${session.selectedCategory} Menu:\n`;
-        
+        const items = await Menu.find({
+          category: session.selectedCategory,
+          isDeleted: { $ne: true },
+        });
+        let itemsList =
+          "Invalid option. Please try again.\n\n" +
+          `${session.selectedCategory} Menu:\n`;
+
         session.menuSnapshot.forEach((snap) => {
           if (snap.startsWith("ITEM|")) {
             const parts = snap.split("|");
-            const dbItem = items.find(i => i._id.toString() === parts[2]);
+            const dbItem = items.find((i) => i._id.toString() === parts[2]);
             if (dbItem) {
               itemsList += `• Select ${parts[1]} for ${dbItem.name} (${formatCurrency(dbItem.price)})\n`;
             }
@@ -253,12 +309,15 @@ export const handleBotMessage = async (sessionId, message) => {
         }
 
         const targetItem = await Menu.findById(session.selectedItemId);
-        const fallbackCats = await Menu.distinct("category", { isDeleted: { $ne: true } });
+        const fallbackCats = await Menu.distinct("category", {
+          isDeleted: { $ne: true },
+        });
         session.state = "awaiting_category";
         session.menuSnapshot = [];
 
         if (!targetItem || targetItem.isDeleted) {
-          let catMsg = "This item is no longer available. Returning to Categories.\n\nSelect a category:\n";
+          let catMsg =
+            "This item is no longer available. Returning to Categories.\n\nSelect a category:\n";
           fallbackCats.forEach((cat, idx) => {
             const selectionCode = `1${idx + 1}`;
             catMsg += `• Select ${selectionCode} for ${cat}\n`;
@@ -296,26 +355,38 @@ export const handleBotMessage = async (sessionId, message) => {
         return nextCatMsg;
       }
 
-      case "awaiting_payment":
-        if (input === "9") {
-          session.state = "idle";
-          session.menuSnapshot = [];
-          session.activeOrderLockId = null;
-          await session.save();
-          return getMainMenu();
-        }
-
+      case "awaiting_payment": {
+        // Run an initial defensive check on database state regardless of input pattern
         if (session.activeOrderLockId) {
-          const checkedOrderState = await Order.findById(session.activeOrderLockId);
-          if (checkedOrderState && checkedOrderState.status === "Order Placed") {
+          const checkedOrderState = await Order.findById(
+            session.activeOrderLockId,
+          );
+          if (
+            checkedOrderState &&
+            checkedOrderState.status === "Order Placed"
+          ) {
             session.state = "idle";
             session.currentOrder = { items: [], total: 0 };
             session.activeOrderLockId = null;
+            session.menuSnapshot = [];
             await session.save();
             return `Payment Successful! Your order has been officially placed.\n\n${getMainMenu()}`;
           }
         }
-        return "Your checkout order processing verification is still pending. Please complete your transaction payment via the secure portal link window, or select 0 to clear and cancel current basket updates safely.";
+
+        if (input === "9" || input === "0") {
+          session.state = "idle";
+          session.menuSnapshot = [];
+          session.activeOrderLockId = null;
+          if (input === "0") {
+            session.currentOrder = { items: [], total: 0 };
+          }
+          await session.save();
+          return getMainMenu();
+        }
+
+        return `Your checkout transaction tracking validation is still pending.\n\nIf you have already paid, select 9 to refresh and view the main menu, or select 0 to reset your session basket clean.`;
+      }
 
       default:
         session.state = "idle";

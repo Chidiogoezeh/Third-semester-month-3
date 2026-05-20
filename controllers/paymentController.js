@@ -59,7 +59,9 @@ export const handlePaystackWebhook = async (req, res) => {
       .digest("hex");
 
     if (hash !== req.headers["x-paystack-signature"]) {
-      return res.status(401).send("Unauthorized Event Origin Validation Failed");
+      return res
+        .status(401)
+        .send("Unauthorized Event Origin Validation Failed");
     }
 
     const event = req.body;
@@ -72,12 +74,15 @@ export const handlePaystackWebhook = async (req, res) => {
       const confirmedOrder = await Order.findOneAndUpdate(
         { _id: orderId, status: "Pending Payment" },
         { $set: { status: "Order Placed" } },
-        { new: true }
+        { new: true },
       );
 
       if (confirmedOrder) {
         await Session.findOneAndUpdate(
-          { deviceId: confirmedOrder.sessionId, activeOrderLockId: confirmedOrder._id },
+          {
+            deviceId: confirmedOrder.sessionId,
+            activeOrderLockId: confirmedOrder._id,
+          },
           {
             $set: {
               state: "idle",
@@ -85,14 +90,14 @@ export const handlePaystackWebhook = async (req, res) => {
               menuSnapshot: [],
               activeOrderLockId: null,
             },
-          }
+          },
         );
 
-        // Real-time Push Notification Fix: Message user directly via Socket channel
+        // --- ENHANCEMENT ADDED HERE FOR LIVE STREAM SYNCHRONIZATION ---
+        // Push an active socket update to clear state layers on the frontend client instantly
         if (req.io) {
-          const { getMainMenu } = await import("./botController.js");
           req.io.to(confirmedOrder.sessionId).emit("bot-response", {
-            text: `Payment Successful! Your order has been officially placed.\n\n${getMainMenu()}`,
+            text: "Payment Successful! Your order has been officially placed.\n\nMain Menu:\n• Select 1 to Place an order (View Categories)\n• Select 97 to See current order (Cart)\n• Select 99 to Checkout and Pay\n• Select 98 to See order history\n• Select 0 to Clear/Cancel current order",
           });
         }
       }
