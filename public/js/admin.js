@@ -117,9 +117,23 @@ const fetchAndRenderMenu = async () => {
         document.getElementById("item-name").value = item.name;
         document.getElementById("item-description").value = item.description || "";
         document.getElementById("item-price").value = item.price;
-        document.getElementById("item-category").value = item.category;
+        
+        const selectElement = document.getElementById("item-category");
+        
+        let targetOption = Array.from(selectElement.options).find(opt => opt.value === item.category);
+        if (!targetOption) {
+          targetOption = document.createElement("option");
+          targetOption.value = item.category;
+          targetOption.textContent = item.category;
+          selectElement.appendChild(targetOption);
+        }
+
+        selectElement.value = item.category;
+        
         editModeId = item._id;
         submitItemBtn.textContent = "Update Item";
+        
+        document.getElementById("menu-form-section").scrollIntoView({ behavior: 'smooth' });
       });
 
       const deleteBtn = document.createElement("button");
