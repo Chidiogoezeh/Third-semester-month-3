@@ -27,7 +27,10 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-app.use("/api", apiRoutes);
+app.use("/api", (req, res, next) => {
+  req.io = io;
+  next();
+}, apiRoutes);
 app.use("/bot", botRoutes);
 
 io.on("connection", (socket) => {
