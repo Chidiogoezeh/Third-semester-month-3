@@ -66,14 +66,22 @@ const fetchAndRenderCategories = async () => {
       delBtn.textContent = "×";
       delBtn.type = "button";
       delBtn.addEventListener("click", async () => {
-        if (!confirm(`To delete category "${catName}", all underlying items will be deleted. Proceed?`)) return;
+        if (
+          !confirm(
+            `To delete category "${catName}", all underlying items will be deleted. Proceed?`,
+          )
+        )
+          return;
         isMutating = true;
-        
-        const matchingItems = items.filter(i => i.category === catName);
+
+        const matchingItems = items.filter((i) => i.category === catName);
         for (const item of matchingItems) {
-          await fetch(`/api/menu/${item._id}`, { method: "DELETE", headers: getAuthHeaders() });
+          await fetch(`/api/menu/${item._id}`, {
+            method: "DELETE",
+            headers: getAuthHeaders(),
+          });
         }
-        
+
         await fetchAndRenderCategories();
         await fetchAndRenderMenu();
         isMutating = false;
@@ -115,12 +123,15 @@ const fetchAndRenderMenu = async () => {
       editBtn.type = "button";
       editBtn.addEventListener("click", () => {
         document.getElementById("item-name").value = item.name;
-        document.getElementById("item-description").value = item.description || "";
+        document.getElementById("item-description").value =
+          item.description || "";
         document.getElementById("item-price").value = item.price;
-        
+
         const selectElement = document.getElementById("item-category");
-        
-        let targetOption = Array.from(selectElement.options).find(opt => opt.value === item.category);
+
+        let targetOption = Array.from(selectElement.options).find(
+          (opt) => opt.value === item.category,
+        );
         if (!targetOption) {
           targetOption = document.createElement("option");
           targetOption.value = item.category;
@@ -129,11 +140,13 @@ const fetchAndRenderMenu = async () => {
         }
 
         selectElement.value = item.category;
-        
+
         editModeId = item._id;
         submitItemBtn.textContent = "Update Item";
-        
-        document.getElementById("menu-form-section").scrollIntoView({ behavior: 'smooth' });
+
+        document
+          .getElementById("menu-form-section")
+          .scrollIntoView({ behavior: "smooth" });
       });
 
       const deleteBtn = document.createElement("button");
@@ -187,10 +200,20 @@ const fetchAndRenderOrders = async () => {
     ordersEmptyMsg.classList.add("hidden-element");
     ordersTable.classList.remove("hidden-element");
 
+    // Fix table header
+    const headerRow = ordersTable.querySelector("thead tr");
+    if (headerRow && !headerRow.querySelector(".actions-head")) {
+      const th = document.createElement("th");
+      th.className = "actions-head";
+      th.textContent = "Actions";
+      headerRow.appendChild(th);
+    }
+
     orders.forEach((order) => {
       const tr = document.createElement("tr");
       const statusTd = document.createElement("td");
-      
+      const actionTd = document.createElement("td");
+
       statusTd.textContent = order.status;
       statusTd.className = `status-${order.status.toLowerCase().replace(/\s+/g, "-")}`;
 
@@ -198,10 +221,38 @@ const fetchAndRenderOrders = async () => {
         .map((i) => `${i.name} (x${i.quantity})`)
         .join(", ");
 
+      // Generate context validation trigger button
+      if (order.status === "Order Placed") {
+        const fulfillBtn = document.createElement("button");
+        fulfillBtn.className = "payment-action-button";
+        fulfillBtn.style.backgroundColor = "var(--success)";
+        fulfillBtn.style.margin = "0";
+        fulfillBtn.textContent = "Mark Fulfilled";
+        fulfillBtn.addEventListener("click", async () => {
+          isMutating = true;
+          const patchRes = await fetch(`/api/orders/${order._id}/fulfill`, {
+            method: "PATCH",
+            headers: getAuthHeaders(),
+          });
+          if (patchRes.ok) {
+            await fetchAndRenderOrders();
+          }
+          isMutating = false;
+        });
+        actionTd.appendChild(fulfillBtn);
+      } else if (order.status === "Order Fulfilled") {
+        actionTd.textContent = "✅ Ready for Pickup";
+        actionTd.style.color = "var(--success)";
+        actionTd.style.fontWeight = "bold";
+      } else {
+        actionTd.textContent = "-";
+      }
+
       tr.appendChild(createTableCell(`...${order._id.slice(-6)}`));
       tr.appendChild(createTableCell(itemDetailsString));
       tr.appendChild(createTableCell(`₦${order.totalAmount}`));
       tr.appendChild(statusTd);
+      tr.appendChild(actionTd);
       ordersList.appendChild(tr);
     });
   } catch (err) {
@@ -222,44 +273,69 @@ categoryForm.addEventListener("submit", async (e) => {
   itemCategorySelect.value = catValue;
 
   nameInput.value = "";
-  alert(`Category dynamic wrapper context created. Assign items to finalize structural mapping.`);
+  alert(
+    `Category dynamic wrapper context created. Assign items to finalize structural mapping.`,
+  );
 });
 
 menuForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const name = document.getElementById("item-name").value.trim();
   const description = document.getElementById("item-description").value.trim();
-  const price = document.getElementById("item-price").value;
+  const priceInput = document.getElementById("item-price").value;
   const category = document.getElementById("item-category").value;
 
-  if (!name || !price || isNaN(parseInt(price, 10))) return;
+  if (!name || !priceInput || isNaN(parseFloat(priceInput))) {
+    alert("Please enter a valid name and price.");
+    return;
+  }
 
   isMutating = true;
   let res;
-  const payload = { name, description, price: parseInt(price, 10), category };
 
-  if (editModeId) {
-    res = await fetch(`/api/menu/${editModeId}`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload),
-    });
-    editModeId = null;
-    submitItemBtn.textContent = "Add Item";
-  } else {
-    res = await fetch("/api/menu", {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload),
-    });
-  }
+  // Package the accurate payload types for Mongoose
+  const payload = {
+    name,
+    description,
+    price: Number(priceInput),
+    category,
+  };
 
-  if (res.ok) {
-    menuForm.reset();
-    await fetchAndRenderMenu();
-    await fetchAndRenderCategories();
+  try {
+    if (editModeId) {
+      res = await fetch(`/api/menu/${editModeId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+    } else {
+      res = await fetch("/api/menu", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+    }
+
+    if (res.ok) {
+      menuForm.reset();
+      editModeId = null; // Clean out global reference block
+      submitItemBtn.textContent = "Add Item";
+
+      // Refresh user view tracking grids instantly
+      await fetchAndRenderMenu();
+      await fetchAndRenderCategories();
+    } else {
+      const errData = await res.json();
+      alert(
+        `Server rejected action: ${errData.error || "Check access configuration token."}`,
+      );
+    }
+  } catch (err) {
+    console.error("Critical dashboard modification runtime fault:", err);
+  } finally {
+    isMutating = false;
   }
-  isMutating = false;
 });
 
 document.addEventListener("DOMContentLoaded", () => {

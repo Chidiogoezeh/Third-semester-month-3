@@ -245,3 +245,14 @@ tr:hover {
 .hidden-element {
     display: none !important;
 }
+
+.status-order-fulfilled {
+    color: #2ecc71;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* Base custom badge structure enhancement */
+td.status-order-placed {
+    color: #2980b9;
+}
