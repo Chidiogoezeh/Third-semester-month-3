@@ -59,9 +59,7 @@ export const handlePaystackWebhook = async (req, res) => {
       .digest("hex");
 
     if (hash !== req.headers["x-paystack-signature"]) {
-      return res
-        .status(401)
-        .send("Unauthorized Event Origin Validation Failed");
+      return res.status(401).send("Unauthorized Event Origin Validation Failed");
     }
 
     const event = req.body;
@@ -74,15 +72,12 @@ export const handlePaystackWebhook = async (req, res) => {
       const confirmedOrder = await Order.findOneAndUpdate(
         { _id: orderId, status: "Pending Payment" },
         { $set: { status: "Order Placed" } },
-        { new: true },
+        { new: true }
       );
 
       if (confirmedOrder) {
         await Session.findOneAndUpdate(
-          {
-            deviceId: confirmedOrder.sessionId,
-            activeOrderLockId: confirmedOrder._id,
-          },
+          { deviceId: confirmedOrder.sessionId, activeOrderLockId: confirmedOrder._id },
           {
             $set: {
               state: "idle",
@@ -90,17 +85,15 @@ export const handlePaystackWebhook = async (req, res) => {
               menuSnapshot: [],
               activeOrderLockId: null,
             },
-          },
+          }
         );
 
-        // Check if the Socket.io instance was passed down through the request context
+        // Real-time Push Notification Fix: Message user directly via Socket channel
         if (req.io) {
-          const successTemplate = `Payment Successful! Your order has been officially placed.\n\nMain Menu:\n• Select 1 to Place an order (View Categories)\n• Select 97 to See current order (Cart)\n• Select 99 to Checkout and Pay\n• Select 98 to See order history\n• Select 0 to Clear/Cancel current order`;
-
-          // Push notification down the unique session pipeline room
-          req.io
-            .to(confirmedOrder.sessionId)
-            .emit("bot-response", { text: successTemplate });
+          const { getMainMenu } = await import("./botController.js");
+          req.io.to(confirmedOrder.sessionId).emit("bot-response", {
+            text: `Payment Successful! Your order has been officially placed.\n\n${getMainMenu()}`,
+          });
         }
       }
     }
