@@ -178,7 +178,7 @@ export const handleBotMessage = async (sessionId, message) => {
           session.menuSnapshot = [];
           await session.save();
 
-          return `PAY_LINK|${process.env.APP_URL || "http://localhost:3000"}/api/pay-trigger?orderId=${order._id}&sess=${session.deviceId}`;
+          return `PAY_LINK|${process.env.APP_URL || "https://restaurant-chatbot-t1jc.onrender.com"}/api/pay-trigger?orderId=${order._id}&sess=${session.deviceId}`;
         }
 
         if (input === "98") {
