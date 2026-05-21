@@ -70,6 +70,14 @@ router.patch("/orders/:id/fulfill", adminSecureGate, async (req, res) => {
       { $set: { status: "Order Fulfilled" } },
       { new: true },
     );
+
+    if (fulfilledOrder && req.io) {
+      // Emit a real-time push notification directly to the user's active socket session channel
+      req.io.to(fulfilledOrder.sessionId).emit("bot-response", {
+        text: `🎉 Good news! Your order (...${fulfilledOrder._id.toString().slice(-6)}) has been marked as FULFILLED and is ready for pickup!`,
+      });
+    }
+
     res.json(fulfilledOrder);
   } catch (err) {
     res
