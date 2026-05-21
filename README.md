@@ -19,7 +19,6 @@ The codebase is split into decoupled, stateless components designed for immediat
 ├── public/
 │ ├── css/style.css # Unified CSS variable matrix and responsive layout rules
 │ ├── js/
-│ │ ├── admin.js # Asynchronous DOM engine for CRUD operations and live order streams
 │ │ ├── app.js # Client-side chatbot interface, session management, and fallback handler
 │ │ └── socket-client.js # Clean abstraction layer for persistent WebSocket channels
 │ ├── admin.html # Markup structure for the Administrative Management Dashboard
@@ -29,6 +28,8 @@ The codebase is split into decoupled, stateless components designed for immediat
 │ └── bot.js # Session identification and entry-point routing modules
 ├── utils/
 │ └── helpers.js # Precision integer currency sanitizers and string formatters
+├── views/
+│ └── admin.js # Asynchronous DOM engine for CRUD operations and live order streams
 └── server.js # Central system entry point binding HTTP, WebSockets, and API pipelines
 
 - 2. Installation and Quickstart

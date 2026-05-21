@@ -23,6 +23,7 @@ connectDB();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static("public"));
 
 // Serve secure admin portal route with backend gatekeeping mechanisms
 app.get("/admin", (req, res) => {
@@ -34,9 +35,6 @@ app.get("/admin", (req, res) => {
     .status(401)
     .send("Access Denied: Administrative Session Token Missing or Invalid.");
 });
-
-// Static files served strictly after specific dynamic authorization interceptors
-app.use(express.static("public"));
 
 app.use(
   "/api",

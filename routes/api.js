@@ -25,11 +25,11 @@ router.get("/pay-trigger", initializePayment);
 // Custom raw body middleware pipeline engineered specifically for verification signatures
 router.post(
   "/paystack-webhook",
-  express.text({ type: "application/json" }),
+  express.raw({ type: "application/json" }),
   (req, res, next) => {
     try {
-      req.rawBody = req.body;
-      req.body = req.body ? JSON.parse(req.body) : {};
+      req.rawBody = req.body.toString("utf8");
+      req.body = req.rawBody ? JSON.parse(req.rawBody) : {};
     } catch (e) {
       req.body = {};
     }
