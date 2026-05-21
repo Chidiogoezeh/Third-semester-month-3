@@ -39,7 +39,7 @@ const createMessageElement = (text, sender) => {
     const [, url] = text.split("|");
     const link = document.createElement("a");
     link.href = url;
-    link.target = "_blank";
+    link.target = "_self";
     link.rel = "noopener noreferrer";
     link.textContent = "Click here to securely pay via Paystack";
     link.classList.add("payment-action-button");
