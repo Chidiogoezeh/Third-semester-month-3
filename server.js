@@ -21,7 +21,16 @@ const io = new Server(httpServer, {
 
 connectDB();
 
-app.use(express.json());
+// Configure express.json to retain raw body buffers specifically for third-party webhook signature parsing
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      if (req.originalUrl.includes("/paystack-webhook")) {
+        req.rawBody = buf.toString("utf8");
+      }
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 

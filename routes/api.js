@@ -22,21 +22,8 @@ const adminSecureGate = (req, res, next) => {
 
 router.get("/pay-trigger", initializePayment);
 
-// Custom raw body middleware pipeline engineered specifically for verification signatures
-router.post(
-  "/paystack-webhook",
-  express.raw({ type: "application/json" }),
-  (req, res, next) => {
-    try {
-      req.rawBody = req.body.toString("utf8");
-      req.body = req.rawBody ? JSON.parse(req.rawBody) : {};
-    } catch (e) {
-      req.body = {};
-    }
-    next();
-  },
-  handlePaystackWebhook,
-);
+// Streamlined webhook route leveraging pre-captured raw body buffer streams
+router.post("/paystack-webhook", handlePaystackWebhook);
 
 router.get("/menu", async (req, res) => {
   const items = await Menu.find({ isDeleted: { $ne: true } });
