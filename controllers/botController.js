@@ -182,10 +182,12 @@ export const handleBotMessage = async (sessionId, message) => {
         }
 
         if (input === "98") {
+          // Include both "Order Placed" and "Order Fulfilled" so past orders don't disappear after completion
           const history = await Order.find({
             sessionId: session.deviceId,
-            status: "Order Placed",
+            status: { $in: ["Order Placed", "Order Fulfilled"] },
           }).sort({ createdAt: -1 });
+
           if (history.length === 0)
             return `No previous order history found.\n\n${getMainMenu()}`;
 
@@ -356,14 +358,16 @@ export const handleBotMessage = async (sessionId, message) => {
       }
 
       case "awaiting_payment": {
-        // Run an initial defensive check on database state regardless of input pattern
+        // Support catching both initial paid states and already fulfilled states if the hook was rapid
         if (session.activeOrderLockId) {
           const checkedOrderState = await Order.findById(
             session.activeOrderLockId,
           );
           if (
             checkedOrderState &&
-            checkedOrderState.status === "Order Placed"
+            ["Order Placed", "Order Fulfilled"].includes(
+              checkedOrderState.status,
+            )
           ) {
             session.state = "idle";
             session.currentOrder = { items: [], total: 0 };
